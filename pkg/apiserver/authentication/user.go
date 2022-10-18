@@ -31,7 +31,9 @@ import (
 // kubernetes api server the user name obtained in *Userinfo is the actual
 // username and tenant ID.
 func UsernameAndTenantID(ctx context.Context) (username string, tenantID string) {
+	log.Infof("UsernameAndTenantID: begin.")
 	userInfo, ok := request.UserFrom(ctx)
+	log.Infof("UsernameAndTenantID: userInfo name%s uin%s group%s extra%s.", userInfo.GetName(), userInfo.GetUID(), userInfo.GetGroups(), userInfo.GetExtra())
 	if !ok {
 		return "", ""
 	}
