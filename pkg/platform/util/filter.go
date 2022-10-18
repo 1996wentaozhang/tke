@@ -20,6 +20,7 @@ package util
 
 import (
 	"context"
+	"tkestack.io/tke/pkg/util/log"
 
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -29,10 +30,13 @@ import (
 
 // FilterCluster is used to filter clusters that do not belong to the tenant.
 func FilterCluster(ctx context.Context, cluster *platform.Cluster) error {
+	log.Infof("FilterCluster: %s.", cluster.Name)
 	_, tenantID := authentication.UsernameAndTenantID(ctx)
 	if tenantID == "" {
+		log.Infof("FilterCluster: %s, no tenantID", cluster.Name)
 		return nil
 	}
+	log.Infof("FilterCluster: %s, tenantID %s", cluster.Name, tenantID)
 	if cluster.Spec.TenantID != tenantID {
 		return errors.NewNotFound(v1.Resource("cluster"), cluster.ObjectMeta.Name)
 	}

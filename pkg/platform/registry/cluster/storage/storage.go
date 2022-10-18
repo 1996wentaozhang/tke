@@ -136,6 +136,7 @@ func NewStorage(optsGetter genericregistry.RESTOptionsGetter, platformClient pla
 
 // ValidateGetObjectAndTenantID validate name and tenantID, if success return cluster
 func ValidateGetObjectAndTenantID(ctx context.Context, store *registry.Store, clusterName string, options *metav1.GetOptions) (runtime.Object, error) {
+	log.Infof("ValidateGetObjectAndTenantID: %s.", clusterName)
 	obj, err := store.Get(ctx, clusterName, options)
 	if err != nil {
 		return nil, err
