@@ -122,6 +122,7 @@ func WithAuthentication(handler http.Handler, auth authenticator.Request, failed
 		if len(apiAuds) > 0 {
 			req = req.WithContext(authenticator.WithAudiences(req.Context(), apiAuds))
 		}
+		log.Infof("WithAuthentication: begin.")
 		resp, ok, err := auth.AuthenticateRequest(req)
 		if err != nil || !ok {
 			if err != nil {
@@ -134,7 +135,7 @@ func WithAuthentication(handler http.Handler, auth authenticator.Request, failed
 			failed.ServeHTTP(w, req)
 			return
 		}
-
+		log.Infof("WithAuthentication: resp %+v.", resp.User)
 		// authorization header is not required anymore in case of a successful authentication.
 		req.Header.Del("Authorization")
 
