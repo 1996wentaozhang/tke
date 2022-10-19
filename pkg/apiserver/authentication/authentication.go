@@ -20,6 +20,7 @@ package authentication
 
 import (
 	"fmt"
+	"tkestack.io/tke/pkg/util/log"
 
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	genericapiserver "k8s.io/apiserver/pkg/server"
@@ -29,6 +30,7 @@ import (
 
 // SetupAuthentication config the generic apiserver by authentication options.
 func SetupAuthentication(genericAPIServerConfig *genericapiserver.Config, authenticationOpts *options.AuthenticationWithAPIOptions) error {
+	log.Infof("SetupAuthentication: config%+v, authenticationOpts%+v.", *genericAPIServerConfig, *authenticationOpts)
 	genericAPIServerConfig.Authentication.APIAudiences = authenticationOpts.APIAudiences
 	return SetupAuthenticationWithoutAudiences(genericAPIServerConfig, authenticationOpts.AuthenticationOptions, authenticationOpts.APIAudiences)
 }
@@ -42,6 +44,7 @@ func SetupAuthenticationWithoutAudiences(genericAPIServerConfig *genericapiserve
 		return fmt.Errorf("invalid authentication config: %v", err)
 	}
 	if authenticationOpts.ClientCert != nil {
+		log.Infof("SetupAuthenticationWithoutAudiences: 1")
 		clientCertificateCAContentProvider, err := authenticationOpts.ClientCert.GetClientCAContentProvider()
 		if err != nil {
 			return fmt.Errorf("unable to load client CA file: %v", err)
@@ -51,6 +54,7 @@ func SetupAuthenticationWithoutAudiences(genericAPIServerConfig *genericapiserve
 		}
 	}
 	if authenticationOpts.RequestHeader != nil {
+		log.Infof("SetupAuthenticationWithoutAudiences: 2")
 		requestHeaderConfig, err := authenticationOpts.RequestHeader.ToAuthenticationRequestHeaderConfig()
 		if err != nil {
 			return fmt.Errorf("unable to create request header authentication config: %v", err)
@@ -73,14 +77,17 @@ func buildAuthenticator(o *options.AuthenticationOptions, apiAudiences []string)
 	}
 
 	if o.ClientCert != nil {
+		log.Infof("buildAuthenticator: 1")
 		ret.ClientCAFile = o.ClientCert.ClientCA
 	}
 
 	if o.TokenFile != nil {
+		log.Infof("buildAuthenticator: 2")
 		ret.TokenAuthFile = o.TokenFile.TokenFile
 	}
 
 	if o.OIDC != nil {
+		log.Infof("buildAuthenticator: 3")
 		ret.OIDCCAFile = o.OIDC.CAFile
 		ret.OIDCClientID = o.OIDC.ClientID
 		ret.OIDCGroupsClaim = o.OIDC.GroupsClaim
@@ -96,12 +103,14 @@ func buildAuthenticator(o *options.AuthenticationOptions, apiAudiences []string)
 	}
 
 	if o.WebHook != nil {
+		log.Infof("buildAuthenticator: 4")
 		ret.WebhookTokenAuthnConfigFile = o.WebHook.ConfigFile
 		ret.WebhookTokenAuthnVersion = o.WebHook.Version
 		ret.WebhookTokenAuthnCacheTTL = o.WebHook.CacheTTL
 	}
 
 	if o.RequestHeader != nil {
+		log.Infof("buildAuthenticator: 5")
 		var err error
 		ret.RequestHeaderConfig, err = o.RequestHeader.ToAuthenticationRequestHeaderConfig()
 		if err != nil {
