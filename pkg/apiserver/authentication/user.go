@@ -33,7 +33,7 @@ import (
 func UsernameAndTenantID(ctx context.Context) (username string, tenantID string) {
 	log.Infof("UsernameAndTenantID: begin.")
 	userInfo, ok := request.UserFrom(ctx)
-	log.Infof("UsernameAndTenantID: userInfo name%s uin%s group%s extra%s.", userInfo.GetName(), userInfo.GetUID(), userInfo.GetGroups(), userInfo.GetExtra())
+	log.Infof("UsernameAndTenantID: userInfo name%s uin%s group%s.", userInfo.GetName(), userInfo.GetUID(), userInfo.GetGroups())
 	if !ok {
 		return "", ""
 	}
@@ -45,6 +45,7 @@ func UsernameAndTenantID(ctx context.Context) (username string, tenantID string)
 			}
 		}
 	}
+	log.Infof("UsernameAndTenantID: userInfo name%s uin%s group%s tenantID %s", userInfo.GetName(), userInfo.GetUID(), userInfo.GetGroups(), tenantID)
 	return userInfo.GetName(), tenantID
 }
 
