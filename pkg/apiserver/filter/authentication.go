@@ -122,7 +122,8 @@ func WithAuthentication(handler http.Handler, auth authenticator.Request, failed
 		if len(apiAuds) > 0 {
 			req = req.WithContext(authenticator.WithAudiences(req.Context(), apiAuds))
 		}
-		log.Infof("WithAuthentication: begin.")
+		log.Infof("WithAuthentication: req %+v.", req)
+		log.Info("WithAuthentication:  header", log.Any("header", req.Header))
 		resp, ok, err := auth.AuthenticateRequest(req)
 		if err != nil || !ok {
 			if err != nil {
