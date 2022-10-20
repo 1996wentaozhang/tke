@@ -19,6 +19,7 @@
 package authentication
 
 import (
+	"github.com/prometheus/common/log"
 	"time"
 
 	"k8s.io/apiserver/pkg/authentication/authenticator"
@@ -129,6 +130,7 @@ func (config Config) New() (authenticator.Request, *spec.SecurityDefinitions, er
 	}
 
 	if len(config.WebhookTokenAuthnConfigFile) > 0 {
+		log.Infof("begin to start webhook.%s %s %s ", config.WebhookTokenAuthnConfigFile, config.WebhookTokenAuthnVersion, config.WebhookTokenAuthnCacheTTL)
 		webhookTokenAuth, err := newWebhookTokenAuthenticator(config.WebhookTokenAuthnConfigFile, config.WebhookTokenAuthnVersion, config.WebhookTokenAuthnCacheTTL, config.APIAudiences)
 		if err != nil {
 			return nil, nil, err

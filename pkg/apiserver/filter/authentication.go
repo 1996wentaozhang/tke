@@ -136,7 +136,7 @@ func WithAuthentication(handler http.Handler, auth authenticator.Request, failed
 			failed.ServeHTTP(w, req)
 			return
 		}
-		log.Infof("WithAuthentication: resp %+v.", resp.User)
+		log.Infof("WithAuthentication: resp %+v.", resp)
 		// authorization header is not required anymore in case of a successful authentication.
 		req.Header.Del("Authorization")
 
