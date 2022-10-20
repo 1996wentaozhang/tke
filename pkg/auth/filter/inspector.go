@@ -105,6 +105,7 @@ func CheckClustersTenant(ctx context.Context, tenantID string, clusterNames []st
 			}
 			return fmt.Sprintf("check cluster: %+v err: %+v", clusterName, err), false
 		}
+		log.Infof("CheckClustersTenant: tenantID %s cluster %s.", clusterName)
 		if tenantID != cluster.Spec.TenantID {
 			return fmt.Sprintf("cluster: %+v has invalid tenantID", clusterName), false
 		}
