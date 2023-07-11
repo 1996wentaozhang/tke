@@ -527,7 +527,8 @@ func (p *Provider) EnsureContainerd(ctx context.Context, c *v1.Cluster) error {
 	option := &containerd.Option{
 		InsecureRegistries: insecureRegistries,
 		SandboxImage:       path.Join(prefix, images.Get().Pause.BaseName()),
-		RegistryMirror:     prefix,
+		// for mirror, we just need domain in prefix
+		RegistryMirror: strings.Split(prefix, "/")[0],
 	}
 	for _, machine := range c.Spec.Machines {
 		machineSSH, err := machine.SSH()
@@ -1677,7 +1678,7 @@ func (p *Provider) EnsureCheckAnywhereSubscription(ctx context.Context, c *v1.Cl
 	_ = wait.PollImmediate(15*time.Second, 10*time.Minute, func() (bool, error) {
 		for i, feed := range sub.Spec.Feeds {
 			var helmrelease *appsv1alpha1.HelmRelease
-			helmrelease, err = extenderapi.GetHelmRelease(hubClient, extenderapi.GenerateHelmReleaseName(sub.Name, feed), mcls.Namespace)
+			helmrelease, err = extenderapi.GetHelmRelease(hubClient, extenderapi.GenerateHelmReleaseName(sub.Namespace, sub.Name, feed.Namespace, feed.Name), mcls.Namespace)
 			if err != nil {
 				if apierrors.IsNotFound(err) {
 					return false, nil
@@ -1705,7 +1706,9 @@ func (p *Provider) EnsureCheckAnywhereSubscription(ctx context.Context, c *v1.Cl
 	if err != nil {
 		return err
 	}
-
+	// Update appVersion after all system components deployed
+	c.Status.AppVersion = c.Spec.AppVersion
+	c.Status.ComponentPhase = platformv1.ComponentDeployed
 	return nil
 }
 

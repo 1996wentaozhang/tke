@@ -45,6 +45,7 @@ const (
 	workloadKindKey       = "workloadKind"
 	namespaceKey          = "namespace"
 	workloadNameKey       = "workloadName"
+	virtualMachineKey     = "virtualMachine"
 	podNameKey            = "podName"
 	nodeNameKey           = "nodeName"
 	nodeRoleKey           = "nodeRole"
@@ -67,6 +68,7 @@ type Alert struct {
 	Annotations map[string]string `json:"annotations"`
 	StartsAt    time.Time         `json:"startsAt"`
 	EndsAt      time.Time         `json:"endsAt"`
+	Status      string            `json:"status"`
 }
 
 // Notification indicates the notification for alertmanager of prometheus
@@ -145,7 +147,7 @@ func registerAlarmWebhook(m *mux.PathRecorderMux, loopbackClientConfig *restclie
 					setErrResponse("receivers and receiverGroups are nil", http.StatusBadRequest, w)
 					return
 				}
-				messageRequest := newMessageRequest(channel, template, receivers, receiverGroups, variables)
+				messageRequest := newMessageRequest(channel, template, receivers, receiverGroups, variables, alert.Status)
 
 				notifyClient := notifyinternalclient.NewForConfigOrDie(loopbackClientConfig)
 				_, err = notifyClient.MessageRequests(messageRequest.ObjectMeta.Namespace).Create(req.Context(), messageRequest, metav1.CreateOptions{})
@@ -177,7 +179,7 @@ func setErrResponse(msg string, statusCode int, w http.ResponseWriter) {
 	http.Error(w, string(jsonMsg), statusCode)
 }
 
-func newMessageRequest(channel string, template string, receivers []string, receiverGroups []string, variables map[string]string) *notify.MessageRequest {
+func newMessageRequest(channel string, template string, receivers []string, receiverGroups []string, variables map[string]string, status string) *notify.MessageRequest {
 	return &notify.MessageRequest{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: channel,
@@ -188,16 +190,19 @@ func newMessageRequest(channel string, template string, receivers []string, rece
 			ReceiverGroups: receiverGroups,
 			Variables:      variables,
 		},
+
+		Status: notify.MessageRequestStatus{
+			AlertStatus: status,
+		},
 	}
 }
 
 func getVariables(alert Alert) map[string]string {
-	summary := "[TKEStack alarm]"
 	variables := make(map[string]string)
 	labels := alert.Labels
 	annotations := alert.Annotations
 
-	summary = fmt.Sprintf("%s\n发生时间：%s", summary, processStartTime(alert.StartsAt))
+	summary := fmt.Sprintf("发生时间：%s", processStartTime(alert.StartsAt))
 
 	alarmPolicyTypeValue, ok := annotations["alarmPolicyType"]
 	if ok {
@@ -226,7 +231,7 @@ func getVariables(alert Alert) map[string]string {
 
 	evaluateValue, ok := annotations[evaluateValueKey]
 	if ok {
-		summary = fmt.Sprintf("%s %s", summary, evaluateValue)
+		summary = fmt.Sprintf("%s %s%s", summary, evaluateValue, unitValue)
 	}
 
 	alarmPolicyNameValue, ok := labels["alarmPolicyName"]
@@ -257,6 +262,11 @@ func getVariables(alert Alert) map[string]string {
 	workloadNameValue, ok := labels["workload_name"]
 	if ok {
 		summary = fmt.Sprintf("%s\n工作负载名称：%s", summary, workloadNameValue)
+	}
+
+	virtualMachineName, ok := labels["name"]
+	if ok {
+		summary = fmt.Sprintf("%s\n虚拟机名称：%s", summary, virtualMachineName)
 	}
 
 	namespaceValue, ok := labels["namespace"]
@@ -297,10 +307,12 @@ func getVariables(alert Alert) map[string]string {
 	variables[evaluateValueKey] = evaluateValue
 	variables[metricDisplayNameKey] = metricDisplayNameValue
 	variables[summaryKey] = summary
+	variables[virtualMachineKey] = virtualMachineName
 
 	return variables
 }
 
 func processStartTime(t time.Time) string {
-	return t.Format("2006-01-02T15:04:05Z")
+	localTime := t.Local()
+	return localTime.Format(time.RFC3339)
 }

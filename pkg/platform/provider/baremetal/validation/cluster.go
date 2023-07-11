@@ -50,7 +50,6 @@ import (
 	"tkestack.io/tke/pkg/util/log"
 	utilmath "tkestack.io/tke/pkg/util/math"
 	"tkestack.io/tke/pkg/util/ssh"
-	"tkestack.io/tke/pkg/util/validation"
 	utilvalidation "tkestack.io/tke/pkg/util/validation"
 )
 
@@ -131,9 +130,11 @@ func ValidatClusterSpec(platformClient platformv1client.PlatformV1Interface, clu
 	allErrs = append(allErrs, ValidateClusterSpecVersion(platformClient, clusterName, cls.Spec.Version, fldPath.Child("version"), phase)...)
 	allErrs = append(allErrs, ValidateCIDRs(cls, fldPath)...)
 	allErrs = append(allErrs, ValidateClusterProperty(&cls.Spec, fldPath.Child("properties"))...)
-	allErrs = append(allErrs, ValidateStorage(cls, fldPath)...)
 	if validateMachine {
 		allErrs = append(allErrs, ValidateClusterMachines(cls, fldPath.Child("machines"))...)
+		if isNeedValidateForDynamicItem(AnywhereValidateItemStorage, cls) {
+			allErrs = append(allErrs, ValidateStorage(cls, fldPath)...)
+		}
 	}
 	allErrs = append(allErrs, ValidateClusterGPUMachines(cls.Spec.Machines, fldPath.Child("machines"))...)
 	allErrs = append(allErrs, ValidateClusterFeature(&cls.Spec, fldPath.Child("features"))...)
@@ -179,7 +180,10 @@ func ValidateClusterMachines(cls *platform.Cluster, fldPath *field.Path) field.E
 	sshErrs := field.ErrorList{}
 	timeErrs := field.ErrorList{}
 	osErrs := field.ErrorList{}
-	mcReErrs := field.ErrorList{}
+	diskLibErrs := field.ErrorList{}
+	diskLogErrs := field.ErrorList{}
+	cpuErrs := field.ErrorList{}
+	memoryErrs := field.ErrorList{}
 	routeErrs := field.ErrorList{}
 	portsErrs := field.ErrorList{}
 	firewallErrs := field.ErrorList{}
@@ -189,7 +193,10 @@ func ValidateClusterMachines(cls *platform.Cluster, fldPath *field.Path) field.E
 	sshResult := TKEValidateResult{}
 	timeResult := TKEValidateResult{}
 	osResult := TKEValidateResult{}
-	mcReResult := TKEValidateResult{}
+	diskLibResult := TKEValidateResult{}
+	diskLogResult := TKEValidateResult{}
+	cpuResult := TKEValidateResult{}
+	memoryResult := TKEValidateResult{}
 	routeResult := TKEValidateResult{}
 	portsResult := TKEValidateResult{}
 	firewallResult := TKEValidateResult{}
@@ -210,12 +217,21 @@ func ValidateClusterMachines(cls *platform.Cluster, fldPath *field.Path) field.E
 			sshproxy.DialTimeOut = time.Second
 			sshproxy.Retry = 0
 			proxy = sshproxy
+		case platform.SOCKS5:
+			socks5proxy := ssh.SOCKS5{}
+			socks5proxy.Host = one.Proxy.IP
+			socks5proxy.Port = int(one.Proxy.Port)
+			socks5proxy.DialTimeOut = time.Second
+			proxy = socks5proxy
 		}
-		proxyErrs = append(proxyErrs, ValidateProxy(fldPath.Index(i), proxy)...)
-		proxyResult.Checked = true
-		// if proxy has err, no need to check ssh
-		if len(proxyErrs) == 0 {
+		if isNeedValidateForDynamicItem(AnywhereValidateItemTunnelConnectivity, cls) {
+			proxyErrs = append(proxyErrs, ValidateProxy(fldPath.Index(i), proxy)...)
+			proxyResult.Checked = true
+			log.Infof("cls %s's %s %s is validated", cls.Spec.DisplayName, one.IP, AnywhereValidateItemTunnelConnectivity)
+		}
+		if isNeedValidateForDynamicItem(AnywhereValidateItemSSH, cls) {
 			sshErrs = append(sshErrs, ValidateSSH(fldPath.Index(i), one.IP, int(one.Port), one.Username, one.Password, one.PrivateKey, one.PassPhrase, proxy)...)
+			log.Infof("cls %s's %s %s is validated", cls.Spec.DisplayName, one.IP, AnywhereValidateItemSSH)
 			// when get ssh err or last machine ssh is checked, ssh can be considered checked
 			if len(sshErrs) != 0 || i == len(cls.Spec.Machines)-1 {
 				sshResult.Checked = true
@@ -228,30 +244,66 @@ func ValidateClusterMachines(cls *platform.Cluster, fldPath *field.Path) field.E
 	}
 
 	if len(masters) == len(cls.Spec.Machines) {
-		timeErrs = ValidateMasterTimeOffset(fldPath, masters)
-		timeResult.Checked = true
+		if isNeedValidateForDynamicItem(AnywhereValidateItemTimeDiff, cls) {
+			timeErrs = ValidateMasterTimeOffset(fldPath, masters)
+			timeResult.Checked = true
+			log.Infof("cls %s's %s is validated", cls.Spec.DisplayName, AnywhereValidateItemTimeDiff)
+		}
 
 		if len(supportedOSList) != 0 {
-			osErrs = ValidateOSVersion(fldPath, masters)
-			osResult.Checked = true
+			if isNeedValidateForDynamicItem(AnywhereValidateItemOSVersion, cls) {
+				osErrs = ValidateOSVersion(fldPath, masters)
+				osResult.Checked = true
+				log.Infof("cls %s's %s is validated", cls.Spec.DisplayName, AnywhereValidateItemOSVersion)
+			}
 		} else {
 			log.Warn("skip validate OS since supported OS list is empty")
 		}
 
-		mcReErrs = ValidateMachineResource(fldPath, masters)
-		mcReResult.Checked = true
+		if isNeedValidateForDynamicItem(AnywhereValidateItemMachineResourceDiskLib, cls) {
+			diskLibErrs = ValidateMachineResourceDiskLib(fldPath, masters)
+			diskLibResult.Checked = true
+			log.Infof("cls %s's %s is validated", cls.Spec.DisplayName, AnywhereValidateItemMachineResourceDiskLib)
+		}
+		if isNeedValidateForDynamicItem(AnywhereValidateItemMachineResourceDiskLog, cls) {
+			diskLogErrs = ValidateMachineResourceDiskLog(fldPath, masters)
+			diskLogResult.Checked = true
+			log.Infof("cls %s's %s is validated", cls.Spec.DisplayName, AnywhereValidateItemMachineResourceDiskLog)
+		}
+		if isNeedValidateForDynamicItem(AnywhereValidateItemMachineResourceCPU, cls) {
+			cpuErrs = ValidateMachineResourceCPU(fldPath, masters)
+			cpuResult.Checked = true
+			log.Infof("cls %s's %s is validated", cls.Spec.DisplayName, AnywhereValidateItemMachineResourceCPU)
+		}
+		if isNeedValidateForDynamicItem(AnywhereValidateItemMachineResourceMemory, cls) {
+			memoryErrs = ValidateMachineResourceMemory(fldPath, masters)
+			memoryResult.Checked = true
+			log.Infof("cls %s's %s is validated", cls.Spec.DisplayName, AnywhereValidateItemMachineResourceMemory)
+		}
 
-		routeErrs = ValidateDefaultRoute(fldPath, masters, cls.Spec.NetworkDevice)
-		routeResult.Checked = true
+		if isNeedValidateForDynamicItem(AnywhereValidateItemDefaultRoute, cls) {
+			routeErrs = ValidateDefaultRoute(fldPath, masters, cls.Spec.NetworkDevice)
+			routeResult.Checked = true
+			log.Infof("cls %s's %s is validated", cls.Spec.DisplayName, AnywhereValidateItemDefaultRoute)
+		}
 
-		portsErrs = ValidateReservePorts(fldPath, masters)
-		portsResult.Checked = true
+		if isNeedValidateForDynamicItem(AnywhereValidateItemReservePorts, cls) {
+			portsErrs = ValidateReservePorts(fldPath, masters)
+			portsResult.Checked = true
+			log.Infof("cls %s's %s is validated", cls.Spec.DisplayName, AnywhereValidateItemReservePorts)
+		}
 
-		firewallErrs = ValidateFirewall(fldPath, masters)
-		firewallResult.Checked = true
+		if isNeedValidateForDynamicItem(AnywhereValidateItemFirewall, cls) {
+			firewallErrs = ValidateFirewall(fldPath, masters)
+			firewallResult.Checked = true
+			log.Infof("cls %s's %s is validated", cls.Spec.DisplayName, AnywhereValidateItemFirewall)
+		}
 
-		selinuxErrs = ValidateSelinux(fldPath, masters)
-		selinuxResult.Checked = true
+		if isNeedValidateForDynamicItem(AnywhereValidateItemSelinux, cls) {
+			selinuxErrs = ValidateSelinux(fldPath, masters)
+			selinuxResult.Checked = true
+			log.Infof("cls %s's %s is validated", cls.Spec.DisplayName, AnywhereValidateItemSelinux)
+		}
 	}
 	if _, ok := cls.Annotations[platform.AnywhereValidateAnno]; ok {
 		proxyResult.Name = AnywhereValidateItemTunnelConnectivity
@@ -270,9 +322,21 @@ func ValidateClusterMachines(cls *platform.Cluster, fldPath *field.Path) field.E
 		osResult.Description = "Verify Target Machine OS"
 		osResult.ErrorList = osErrs
 
-		mcReResult.Name = AnywhereValidateItemMachineResource
-		mcReResult.Description = "Verify Target Machine Resource"
-		mcReResult.ErrorList = mcReErrs
+		diskLibResult.Name = AnywhereValidateItemMachineResourceDiskLib
+		diskLibResult.Description = "Verify /var/lib disk size"
+		diskLibResult.ErrorList = diskLibErrs
+
+		diskLogResult.Name = AnywhereValidateItemMachineResourceDiskLog
+		diskLogResult.Description = "Verify /var/log disk size"
+		diskLogResult.ErrorList = diskLogErrs
+
+		cpuResult.Name = AnywhereValidateItemMachineResourceCPU
+		cpuResult.Description = "Verify CPU"
+		cpuResult.ErrorList = cpuErrs
+
+		memoryResult.Name = AnywhereValidateItemMachineResourceMemory
+		memoryResult.Description = "Verify Memory"
+		memoryResult.ErrorList = memoryErrs
 
 		routeResult.Name = AnywhereValidateItemDefaultRoute
 		routeResult.Description = "Verify Default Route Network Interface"
@@ -295,7 +359,10 @@ func ValidateClusterMachines(cls *platform.Cluster, fldPath *field.Path) field.E
 			sshResult.ToFieldError(),
 			timeResult.ToFieldError(),
 			osResult.ToFieldError(),
-			mcReResult.ToFieldError(),
+			diskLibResult.ToFieldError(),
+			diskLogResult.ToFieldError(),
+			cpuResult.ToFieldError(),
+			memoryResult.ToFieldError(),
 			routeResult.ToFieldError(),
 			portsResult.ToFieldError(),
 			firewallResult.ToFieldError(),
@@ -305,7 +372,10 @@ func ValidateClusterMachines(cls *platform.Cluster, fldPath *field.Path) field.E
 		allErrs = append(allErrs, sshErrs...)
 		allErrs = append(allErrs, timeErrs...)
 		allErrs = append(allErrs, osErrs...)
-		allErrs = append(allErrs, mcReErrs...)
+		allErrs = append(allErrs, diskLibErrs...)
+		allErrs = append(allErrs, diskLogErrs...)
+		allErrs = append(allErrs, cpuErrs...)
+		allErrs = append(allErrs, memoryErrs...)
 		allErrs = append(allErrs, routeErrs...)
 		allErrs = append(allErrs, portsErrs...)
 		allErrs = append(allErrs, firewallErrs...)
@@ -555,7 +625,7 @@ func ValidateDefaultRoute(fldPath *field.Path, sshs []*ssh.SSH, expectedNetInter
 	return allErrs
 }
 
-func ValidateMachineResource(fldPath *field.Path, sshs []*ssh.SSH) field.ErrorList {
+func ValidateMachineResourceDiskLib(fldPath *field.Path, sshs []*ssh.SSH) field.ErrorList {
 	allErrs := field.ErrorList{}
 	for i, one := range sshs {
 		size, err := ssh.DiskAvail(one, MachineResourceRequstDiskPath)
@@ -567,7 +637,15 @@ func ValidateMachineResource(fldPath *field.Path, sshs []*ssh.SSH) field.ErrorLi
 			allErrs = append(allErrs, field.Invalid(fldPath.Index(i), one.Host,
 				fmt.Sprintf("%s disk space %d GiB is smaller than request size %d GiB", MachineResourceRequstDiskPath, size, MachineResourceRequstDiskSpace)))
 		}
-		size, err = ssh.DiskAvail(one, MachineResourceRequstLogDiskPath)
+	}
+
+	return allErrs
+}
+
+func ValidateMachineResourceDiskLog(fldPath *field.Path, sshs []*ssh.SSH) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for i, one := range sshs {
+		size, err := ssh.DiskAvail(one, MachineResourceRequstLogDiskPath)
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(fldPath.Index(i), one.Host, err.Error()))
 			continue
@@ -576,6 +654,14 @@ func ValidateMachineResource(fldPath *field.Path, sshs []*ssh.SSH) field.ErrorLi
 			allErrs = append(allErrs, field.Invalid(fldPath.Index(i), one.Host,
 				fmt.Sprintf("%s disk space %d GiB is smaller than request size %d GiB", MachineResourceRequstLogDiskPath, size, MachineResourceRequstLogDiskSpace)))
 		}
+	}
+
+	return allErrs
+}
+
+func ValidateMachineResourceCPU(fldPath *field.Path, sshs []*ssh.SSH) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for i, one := range sshs {
 		cpuNum, err := ssh.NumCPU(one)
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(fldPath.Index(i), one.Host, err.Error()))
@@ -585,6 +671,14 @@ func ValidateMachineResource(fldPath *field.Path, sshs []*ssh.SSH) field.ErrorLi
 			allErrs = append(allErrs, field.Invalid(fldPath.Index(i), one.Host,
 				fmt.Sprintf("cpu number %d is smaller than request %d", cpuNum, MachineResourceRequstCPU)))
 		}
+	}
+
+	return allErrs
+}
+
+func ValidateMachineResourceMemory(fldPath *field.Path, sshs []*ssh.SSH) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for i, one := range sshs {
 		memInBytes, err := ssh.MemoryCapacity(one)
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(fldPath.Index(i), one.Host, err.Error()))
@@ -698,7 +792,7 @@ func ValidateCIDRs(cls *platform.Cluster, specPath *field.Path) field.ErrorList 
 			if err != nil {
 				allErrs = append(allErrs, field.Invalid(path, cidr, "must be a valid CIDR block (e.g. 10.100.0.0/16 or fde4:8dba:82e1::/48)"))
 			}
-			if path == specPath.Child("clusterCIDR") {
+			if path.String() == specPath.Child("clusterCIDR").String() {
 				clusterCIDR = cidrX
 				for i, mc := range cls.Spec.Machines {
 					if clusterCIDR.Contains(net.ParseIP(mc.IP)) {
@@ -729,7 +823,7 @@ func ValidateCIDRs(cls *platform.Cluster, specPath *field.Path) field.ErrorList 
 		} else {
 			checkFunc(fldPath, cidr)
 			if clusterCIDR != nil && serviceCIDR != nil {
-				if err := validation.IsSubNetOverlapped(clusterCIDR, serviceCIDR); err != nil {
+				if err := utilvalidation.IsSubNetOverlapped(clusterCIDR, serviceCIDR); err != nil {
 					allErrs = append(allErrs, field.Invalid(fldPath, cidr, err.Error()))
 				}
 				if _, err := ipallocator.GetIndexedIP(serviceCIDR, 10); err != nil {
@@ -831,4 +925,16 @@ func ValidateIPVS(spec *platform.ClusterSpec, ipvs *bool, fldPath *field.Path) f
 		}
 	}
 	return allErrs
+}
+
+func isNeedValidateForDynamicItem(item string, cls *platform.Cluster) bool {
+	if _, ok := cls.Annotations[platform.AnywhereValidateAnno]; !ok {
+		// if AnywhereValidateAnno is not set, will skip dynamic validate
+		return false
+	}
+	if cls.Annotations[platform.AnywhereValidateAnno] == AnywhereValidateItemAll {
+		// if AnywhereValidateAnno is set, and validate item is all, will validate all dynamic item
+		return true
+	}
+	return item == cls.Annotations[platform.AnywhereValidateAnno]
 }

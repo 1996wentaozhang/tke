@@ -70,6 +70,8 @@ func (p *Provider) getKubeadmJoinConfig(c *v1.Cluster, machineIP string) *kubead
 			kubeletExtraArgs["node-labels"] = fmt.Sprintf("%s,%s=%s", kubeletExtraArgs["node-labels"], apiclient.LabelSwitchIPCilium, switchIP)
 		}
 	}
+	kubeletExtraArgs["node-labels"] = fmt.Sprintf("%s,%s=%s", kubeletExtraArgs["node-lables"], apiclient.LabelTopologyZone, "default")
+
 	if _, ok := kubeletExtraArgs["hostname-override"]; !ok {
 		if !c.Spec.HostnameAsNodename {
 			nodeRegistration.Name = machineIP
@@ -118,6 +120,7 @@ func (p *Provider) getInitConfiguration(c *v1.Cluster) *kubeadmv1beta2.InitConfi
 			kubeletExtraArgs["node-labels"] = fmt.Sprintf("%s,%s=%s", kubeletExtraArgs["node-labels"], apiclient.LabelSwitchIPCilium, switchIP)
 		}
 	}
+	kubeletExtraArgs["node-labels"] = fmt.Sprintf("%s,%s=%s", kubeletExtraArgs["node-lables"], apiclient.LabelTopologyZone, "default")
 	// add node ip for single stack ipv6 clusters.
 	if _, ok := kubeletExtraArgs["node-ip"]; !ok {
 		kubeletExtraArgs["node-ip"] = machineIP

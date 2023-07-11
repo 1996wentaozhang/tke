@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, TableColumn, Text, Pagination, Dropdown, List } from 'tea-component';
+import { Table, Button, TableColumn, Text, Pagination, Dropdown, List, Icon, Bubble } from 'tea-component';
 import { VMListActionPanel } from './action-panel';
 import { useFetch } from '@src/modules/common/hooks';
 import * as dayjs from 'dayjs';
@@ -7,7 +7,7 @@ import { useSetRecoilState, useRecoilState, useRecoilValue } from 'recoil';
 import { clusterIdState, namespaceSelectionState, vmSelectionState } from '../../store/base';
 import { virtualMachineAPI } from '@src/webApi';
 import { router } from '@src/modules/cluster/router';
-import { BootButton, ShutdownButton, DelButton, VNCButton } from '../../components';
+import { BootButton, ShutdownButton, DelButton, VNCButton, CreateSnapshotButton } from '../../components';
 
 const { autotip } = Table.addons;
 
@@ -45,10 +45,25 @@ export const VMListPanel = ({ route }) => {
     {
       key: 'status',
       header: '状态',
-      render({ status }) {
+      render({ status, failureCondition }) {
         const theme = status === 'Running' ? 'success' : 'danger';
 
-        return <Text theme={theme}>{status}</Text>;
+        const bubbleContent = Object.entries(failureCondition || {}).map(([key, value]) => (
+          <Text parent="p">
+            {key}: {value}
+          </Text>
+        ));
+
+        return (
+          <>
+            <Text theme={theme}>{status}</Text>
+            {failureCondition && (
+              <Bubble content={<> {bubbleContent}</>}>
+                <Icon style={{ marginLeft: 5 }} type="info" />
+              </Bubble>
+            )}
+          </>
+        );
       }
     },
 
@@ -78,7 +93,7 @@ export const VMListPanel = ({ route }) => {
     {
       key: 'actions',
       header: '操作',
-      render({ name, status }) {
+      render({ name, status, supportSnapshot }) {
         return (
           <>
             <VNCButton type="link" clusterId={clusterId} name={name} namespace={namespace} status={status} />
@@ -109,6 +124,19 @@ export const VMListPanel = ({ route }) => {
                 <List.Item>
                   <DelButton clusterId={clusterId} name={name} namespace={namespace} type="link" onSuccess={reFetch} />
                 </List.Item>
+
+                <List.Item>
+                  <CreateSnapshotButton
+                    clusterId={clusterId}
+                    name={name}
+                    namespace={namespace}
+                    disabled={!supportSnapshot}
+                    onSuccess={() => {
+                      const urlParams = router.resolve(route);
+                      router.navigate(Object.assign({}, urlParams, { mode: 'snapshot' }), route.queries);
+                    }}
+                  />
+                </List.Item>
               </List>
             </Dropdown>
           </>
@@ -137,18 +165,33 @@ export const VMListPanel = ({ route }) => {
       );
       return {
         data:
-          items.map(({ metadata, status, spec, vmi }) => ({
-            name: metadata?.name,
-            status: status?.printableStatus,
-            mirror: metadata?.annotations?.['tkestack.io/image-display-name'] ?? '-',
-            ip: vmi?.status?.interfaces?.[0]?.ipAddress ?? '-',
-            hardware: `${spec?.template?.spec?.domain?.cpu?.cores ?? '-'}核 / ${
-              spec?.template?.spec?.domain?.resources?.requests?.memory ?? '-'
-            }`,
-            createTime: metadata?.creationTimestamp,
+          items.map(({ metadata, status, spec, vmi }) => {
+            let realStatus = status?.printableStatus;
+            if (realStatus === 'Running' && !status?.ready) {
+              realStatus = 'Abnormal';
+            }
 
-            id: metadata?.uid
-          })) ?? [],
+            const failureCondition =
+              realStatus === 'Stopped' ? status?.conditions?.find(({ type }) => type === 'Failure') : null;
+
+            return {
+              name: metadata?.name,
+              status: realStatus,
+              failureCondition,
+              mirror: metadata?.annotations?.['tkestack.io/image-display-name'] ?? '-',
+              ip: vmi?.status?.interfaces?.[0]?.ipAddress ?? '-',
+              hardware: `${spec?.template?.spec?.domain?.cpu?.cores ?? '-'}核 / ${
+                spec?.template?.spec?.domain?.resources?.requests?.memory ?? '-'
+              }`,
+              createTime: metadata?.creationTimestamp,
+
+              id: metadata?.uid,
+
+              supportSnapshot:
+                metadata?.annotations?.['tkestack.io/support-snapshot'] === 'true' &&
+                (realStatus === 'Running' || realStatus === 'Stopped')
+            };
+          }) ?? [],
 
         continueToken: newContinueToken,
 
@@ -168,7 +211,7 @@ export const VMListPanel = ({ route }) => {
 
   return (
     <>
-      <VMListActionPanel route={route} reFetch={reFetch} onQueryChange={setQuery} />
+      <VMListActionPanel route={route} reFetch={reFetch} vmList={vmList ?? []} onQueryChange={setQuery} />
       <Table
         columns={columns}
         records={vmList ?? []}

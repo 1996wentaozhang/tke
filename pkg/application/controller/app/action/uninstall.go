@@ -20,13 +20,14 @@ package action
 
 import (
 	"context"
-
-	appconfig "tkestack.io/tke/pkg/application/config"
+	"errors"
 
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	applicationv1 "tkestack.io/tke/api/application/v1"
 	applicationversionedclient "tkestack.io/tke/api/client/clientset/versioned/typed/application/v1"
 	platformversionedclient "tkestack.io/tke/api/client/clientset/versioned/typed/platform/v1"
+	appconfig "tkestack.io/tke/pkg/application/config"
 	helmaction "tkestack.io/tke/pkg/application/helm/action"
 	"tkestack.io/tke/pkg/application/util"
 )
@@ -49,11 +50,13 @@ func Uninstall(ctx context.Context,
 	resp, err := client.Uninstall(&helmaction.UninstallOptions{
 		Namespace:   app.Spec.TargetNamespace,
 		ReleaseName: app.Spec.Name,
-		Timeout:     clientTimeOut,
+		Timeout:     defaultTimeout,
 	})
-	if err != nil {
+
+	if err != nil && !errors.Is(err, driver.ErrReleaseNotFound) {
 		return resp, err
 	}
+
 	err = hooks.PostUninstall(ctx, applicationClient, platformClient, app, repo)
 	return resp, err
 }

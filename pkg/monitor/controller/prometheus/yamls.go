@@ -503,7 +503,7 @@ groups:
     expr: container_memory_usage_bytes * on(namespace, pod_name) group_left(workload_kind,workload_name,node, node_role)  __pod_info2
 
   - record: k8s_container_mem_no_cache_bytes
-    expr: (container_memory_usage_bytes -  container_memory_cache)  * on(namespace, pod_name) group_left(workload_kind,workload_name,node, node_role)  __pod_info2
+    expr: container_memory_working_set_bytes * on(namespace, pod_name) group_left(workload_kind,workload_name,node, node_role)  __pod_info2
 
   - record: k8s_container_rate_mem_usage_request
     expr: k8s_container_mem_usage_bytes * 100 / on (pod_name,namespace,container_name)  group_left kube_pod_container_resource_requests{resource="memory"}
@@ -548,10 +548,10 @@ groups:
     expr: sum(rate(container_network_transmit_bytes_total[4m])) without(interface)  * on(namespace, pod_name) group_left(workload_kind,workload_name,node, node_role)  __pod_info2
 
   - record: k8s_container_network_receive_bytes
-    expr: sum(idelta(container_network_receive_bytes_total[2m])) without(interface)  * on(namespace, pod_name) group_left(workload_kind,workload_name,node, node_role)  __pod_info2
+    expr: sum(idelta(container_network_receive_bytes_total[4m])) without(interface)  * on(namespace, pod_name) group_left(workload_kind,workload_name,node, node_role)  __pod_info2
 
   - record: k8s_container_network_transmit_bytes
-    expr: sum(idelta(container_network_transmit_bytes_total[2m])) without(interface)  * on(namespace, pod_name) group_left(workload_kind,workload_name,node, node_role)  __pod_info2
+    expr: sum(idelta(container_network_transmit_bytes_total[4m])) without(interface)  * on(namespace, pod_name) group_left(workload_kind,workload_name,node, node_role)  __pod_info2
 
   - record: k8s_container_network_receive_packets
     expr: sum(rate(container_network_receive_packets_total[4m])) without(interface)  * on(namespace, pod_name) group_left(workload_kind,workload_name,node, node_role)  __pod_info2
@@ -668,10 +668,10 @@ groups:
     expr: sum(k8s_container_fs_write_times) without (container_name,container_id)
 
   - record: k8s_pod_status_ready
-    expr: sum(kube_pod_status_ready{condition="true"}) by (namespace,pod_name) *  on(namespace, pod_name) group_left(workload_kind,workload_name,node, node_role)  __pod_info2
+    expr: sum(kube_pod_status_phase{phase=~"Running|Succeeded"}) by (namespace,pod_name) *  on(namespace, pod_name) group_left(workload_kind,workload_name,node, node_role)  __pod_info2
 
   - record: k8s_pod_restart_total
-    expr: sum(idelta(kube_pod_container_status_restarts_total [2m])) by (namespace,pod_name) *  on(namespace, pod_name) group_left(workload_kind,workload_name,node, node_role)  __pod_info2
+    expr: sum(idelta(kube_pod_container_status_restarts_total [4m])) by (namespace,pod_name) *  on(namespace, pod_name) group_left(workload_kind,workload_name,node, node_role)  __pod_info2
 
   - record: k8s_pod_restart_total_number
     expr: sum(kube_pod_container_status_restarts_total) by (namespace,pod_name) *  on(namespace, pod_name) group_left(workload_kind,workload_name,node, node_role)  __pod_info2
@@ -1228,8 +1228,46 @@ groups:
 
   - record: k8s_component_etcd_version
     expr: label_replace(max(etcd_server_version) by (server_version),"gitVersion", "$1", "server_version", "(.*)")
-`
 
+  - record: vm_cpu_core_total
+    expr: count(count(kubevirt_vmi_vcpu_seconds) without (state)) by (name, namespace, node)
+
+  - record: vm_cpu_usage_rate
+    expr: (sum by (node, name, namespace)(rate(kubevirt_vmi_vcpu_seconds{state="running"}[5m])))*100
+
+  - record: vm_memory_total
+    expr: sum(kubevirt_vmi_memory_available_bytes) by (node, name, namespace)/(1024*1024)
+
+  - record: vm_memory_usage
+    expr: sum(kubevirt_vmi_memory_available_bytes-kubevirt_vmi_memory_unused_bytes) by (node, name, namespace)/(1024*1024)
+
+  - record: vm_memory_usage_rate
+    expr: (kubevirt_vmi_memory_available_bytes-kubevirt_vmi_memory_unused_bytes)*100 / on(node, name, namespace) kubevirt_vmi_memory_available_bytes
+  
+  - record: vm_network_transmit_bw
+    expr: (sum by (node, name, namespace, interface)(rate(kubevirt_vmi_network_transmit_bytes_total[5m])))*8/(1024*1024)
+  
+  - record: vm_network_receive_bw
+    expr: (sum by (node, name, namespace, interface)(rate(kubevirt_vmi_network_receive_bytes_total[5m])))*8/(1024*1024)
+
+  - record: vm_network_transmit_packets_rate
+    expr: sum by (node, name, namespace, interface)(rate(kubevirt_vmi_network_transmit_packets_total[5m]))
+
+  - record: vm_network_receive_packets_rate
+    expr: sum by (node, name, namespace, interface)(rate(kubevirt_vmi_network_receive_packets_total[5m]))
+
+  - record: vm_storage_read_bw
+    expr: sum by (node, name, namespace, drive)(rate(kubevirt_vmi_storage_read_traffic_bytes_total{drive!~"cloudinitdisk"}[5m]))/(1024*1024)
+
+  - record: vm_storage_write_bw
+    expr: sum by(node, name, namespace, drive)(rate(kubevirt_vmi_storage_write_traffic_bytes_total{drive!~"cloudinitdisk"}[5m]))/(1024*1024)
+
+  - record: vm_storage_read_iops
+    expr: sum by (node, name, namespace, drive)(rate(kubevirt_vmi_storage_iops_read_total{drive!~"cloudinitdisk"}[5m]))
+
+  - record: vm_storage_write_iops
+    expr: sum by (node, name, namespace, drive)(rate(kubevirt_vmi_storage_iops_write_total{drive!~"cloudinitdisk"}[5m]))
+`
 	return rules
 }
 
@@ -1240,8 +1278,8 @@ func configForAlertManager(webhookAddr string, repeatInterval string) string {
 
     route:
       group_by: ['alertname','alarmPolicyName','version']
-      group_wait: 1s
-      group_interval: 1s
+      group_wait: 30s
+      group_interval: 5m
       repeat_interval: %s
       receiver: 'web.hook'
       routes:

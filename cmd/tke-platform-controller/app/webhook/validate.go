@@ -14,6 +14,7 @@ import (
 	platform "tkestack.io/tke/api/platform"
 	platformv1 "tkestack.io/tke/api/platform/v1"
 	"tkestack.io/tke/api/platform/validation"
+	clusterprovider "tkestack.io/tke/pkg/platform/provider/cluster"
 	"tkestack.io/tke/pkg/platform/types"
 	"tkestack.io/tke/pkg/util/log"
 )
@@ -31,7 +32,6 @@ func init() {
 func Validate(reponseWriter http.ResponseWriter, request *http.Request) {
 	var body []byte
 	var err error
-	log.Infof("receive validate request, request: %v", request)
 	if request.Body != nil {
 		if body, err = ioutil.ReadAll(request.Body); err != nil {
 			log.Errorf("request body read failed, err: %v", err)
@@ -84,10 +84,16 @@ func Validate(reponseWriter http.ResponseWriter, request *http.Request) {
 			admissionResponse = ValidateCluster(&cluster)
 		}
 		if admissionReview.Request.Operation == v1.Update {
+			v1OldCluster := platformv1.Cluster{}
+			if err := json.Unmarshal(admissionReview.Request.OldObject.Raw, &v1OldCluster); err != nil {
+				log.Errorf("Can't unmarshal old cluster, err: %v", err)
+				http.Error(reponseWriter, fmt.Sprintf("Can't unmarshal old cluster, err: %v", err), http.StatusInternalServerError)
+				return
+			}
 			oldCluster := platform.Cluster{}
-			if err := json.Unmarshal(admissionReview.Request.Object.Raw, &oldCluster); err != nil {
-				log.Errorf("Can't unmarshal cluster, err: %v", err)
-				http.Error(reponseWriter, fmt.Sprintf("Can't unmarshal cluster, err: %v", err), http.StatusInternalServerError)
+			if err = platformv1.Convert_v1_Cluster_To_platform_Cluster(&v1OldCluster, &oldCluster, nil); err != nil {
+				log.Errorf("Can't convert v1oldcluster to oldcluster, err: %v", err)
+				http.Error(reponseWriter, fmt.Sprintf("Can't convert v1oldcluster to oldcluster, err: %v", err), http.StatusInternalServerError)
 				return
 			}
 			admissionResponse = ValidateClusterUpdate(&cluster, &oldCluster)
@@ -134,7 +140,14 @@ func ValidateClusterUpdate(cluster *platform.Cluster, oldCluster *platform.Clust
 	oldTypeCluster := types.Cluster{
 		Cluster: oldCluster,
 	}
-	errorList := validation.ValidateClusterUpdate(&typeCluster, &oldTypeCluster)
+
+	errorList := field.ErrorList{}
+	p, err := clusterprovider.GetProvider(cluster.Spec.Type)
+	if err != nil {
+		errorList = append(errorList, field.NotFound(field.NewPath("spec").Child("type"), cluster.Spec.Type))
+		return transferErrorList(&errorList, fmt.Sprintf("cluster %s update validate failed: %v", oldCluster.Name, errorList.ToAggregate().Errors()))
+	}
+	errorList = append(errorList, p.ValidateUpdate(&typeCluster, &oldTypeCluster)...)
 	if len(errorList) == 0 {
 		return &v1.AdmissionResponse{
 			Allowed: true,

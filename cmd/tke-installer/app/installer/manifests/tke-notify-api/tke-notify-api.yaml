@@ -42,6 +42,17 @@ spec:
             - matchExpressions:
               - key: node-role.kubernetes.io/master
                 operator: Exists
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - tke-notify-api
+              topologyKey: kubernetes.io/hostname
+            weight: 1
       containers:
         - name: tke-notify-api
           image: {{ .Image }}
@@ -52,6 +63,8 @@ spec:
               mountPath: /app/certs
             - name: tke-notify-api-volume
               mountPath: /app/conf
+            - name: timezone
+              mountPath: /etc/localtime
           ports:
             - containerPort: 9457
           readinessProbe:
@@ -75,7 +88,6 @@ spec:
             requests:
               cpu: 50m
               memory: 128Mi
-
       volumes:
         - name: certs-volume
           configMap:
@@ -83,6 +95,10 @@ spec:
         - name: tke-notify-api-volume
           configMap:
             name: tke-notify-api
+        - name: timezone
+          hostPath:
+            path: /etc/localtime
+
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -140,6 +156,11 @@ data:
       [client.platform]
       api_server = "https://tke-platform-api"
       api_server_client_config = "/app/conf/tke-platform-config.yaml"
+
+    [features]
+       # Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h"
+       messagerequest_ttl = "1h"
+       message_ttl = "360h"
 
   tke-auth-webhook.yaml: |
     apiVersion: v1

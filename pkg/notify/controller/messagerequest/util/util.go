@@ -23,7 +23,9 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"html"
 	htmlTemplate "html/template"
+
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -93,10 +95,22 @@ func ParseTemplate(name string, template string, variables map[string]string) (s
 	if err != nil {
 		return "", err
 	}
-	return buffer.String(), nil
+	return html.UnescapeString(buffer.String()), nil
 }
 
 // GetCurrentTime returns current timestamp
 func GetCurrentTime() int64 {
 	return time.Now().Unix()
+}
+
+//render the alert status before sending alert message
+func GetAlertStatus(status string) string {
+	var alertStatus string
+	if status == string("firing") {
+		alertStatus = "未恢复"
+	} else {
+		alertStatus = "已恢复"
+	}
+	alertStatus = fmt.Sprintf("告警状态： %s", alertStatus)
+	return alertStatus
 }

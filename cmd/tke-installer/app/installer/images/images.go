@@ -92,7 +92,7 @@ var Version = version.Get().GitVersion
 var exComponents = ExComponents{
 	Registry: containerregistry.Image{Name: "registry", Tag: "2.7.1"},
 	Busybox:  containerregistry.Image{Name: "busybox", Tag: "1.31.1"},
-	InfluxDB: containerregistry.Image{Name: "influxdb", Tag: "1.7.9"},
+	InfluxDB: containerregistry.Image{Name: "influxdb", Tag: "1.8.10"},
 	Thanos:   containerregistry.Image{Name: "thanos", Tag: "v0.15.0"},
 
 	TKEBusinessAPI:           containerregistry.Image{Name: "tke-business-api", Tag: Version},
@@ -130,7 +130,7 @@ var baseComponents = BaseComponents{
 	CsiAttacher:            containerregistry.Image{Name: "csi-attacher", Tag: "v3.4.0"},
 	CsiResizer:             containerregistry.Image{Name: "csi-resizer", Tag: "v1.4.0"},
 	CsiSnapshotter:         containerregistry.Image{Name: "csi-snapshotter", Tag: "v4.2.0"},
-	CephCsi:                containerregistry.Image{Name: "cephcsi", Tag: "v3.6.0"},
+	CephCsi:                containerregistry.Image{Name: "cephcsi", Tag: "v3.6.1-csp2.8.3.1216"},
 }
 
 var components = Components{baseComponents, exComponents}

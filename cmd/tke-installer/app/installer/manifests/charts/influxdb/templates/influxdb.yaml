@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: influxdb
   namespace: tke
@@ -7,17 +7,25 @@ metadata:
     app: influxdb
 spec:
   replicas: 1
-  serviceName: influxdb
   selector:
     matchLabels:
       app: influxdb
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
         app: influxdb
     spec:
       containers:
-      - name: influxdb
+      - env:
+        - name: GODEGUB
+          value: madvdontneed=1
+        {{- if .Values.resources }}
+        - name: GOMAXPROCS
+          value: {{ .Values.resources.limits.cpu| quote }}
+        {{- end }}
+        name: influxdb
         image: {{ .Values.image }}
         livenessProbe:
           tcpSocket:
@@ -29,6 +37,9 @@ spec:
             port: 8086
           initialDelaySeconds: 1
           periodSeconds: 10
+      {{- if .Values.resources }}
+        resources: {{ toYaml .Values.resources | nindent 10 }}
+      {{- end }}
         volumeMounts:
         - name: data
           mountPath: /var/lib/influxdb
@@ -36,7 +47,6 @@ spec:
 {{- if .Values.baremetalStorage }}
       nodeName: {{ .Values.nodeName }}
 {{- end }}
-      hostNetwork: true
       volumes:
       - name: data
 {{- if .Values.baremetalStorage }}
@@ -84,3 +94,20 @@ spec:
       storage: 40Gi
   storageClassName: {{ .Values.nfsStorageClassName }}
 {{- end }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: influxdb
+  namespace: tke
+spec:
+  ports:
+    - name: remote-write
+      port: 8086
+      targetPort: 8086
+      protocol: TCP
+      nodePort: 30086
+  type: NodePort
+  selector:
+    app: influxdb

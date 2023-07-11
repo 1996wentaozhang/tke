@@ -196,7 +196,9 @@ func (rs *REST) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 	}
 	app := obj.(*application.App)
 
-	if !rest.ValidNamespace(ctx, &app.ObjectMeta) {
+	requestNamespace, _ := genericapirequest.NamespaceFrom(ctx)
+	err = rest.EnsureObjectNamespaceMatchesRequestNamespace(requestNamespace, &app.ObjectMeta)
+	if err != nil {
 		return nil, false, errors.NewConflict(applicationapi.Resource("apps"), app.Namespace, fmt.Errorf("App.Namespace does not match the provided context"))
 	}
 
@@ -234,7 +236,7 @@ func (rs *REST) Update(ctx context.Context, name string, objInfo rest.UpdatedObj
 		}
 	}
 
-	if !reflect.DeepEqual(oldApp.Spec, app.Spec) && app.Status.Phase != applicationapi.AppPhaseRolledBack {
+	if !reflect.DeepEqual(oldApp.Spec, app.Spec) && app.Status.Phase != applicationapi.AppPhaseRolledBack && oldApp.Status.Phase != applicationapi.AppPhaseTerminating {
 		app.Status.Phase = applicationapi.AppPhaseUpgrading
 	}
 
@@ -261,7 +263,7 @@ func (rs *REST) prepareForCheck(ctx context.Context, app *application.App) error
 }
 
 func (rs *REST) canVisitChart(ctx context.Context, app *application.App) error {
-	//TODO: allowAlways if registryClient is empty?
+	// TODO: allowAlways if registryClient is empty?
 	if rs.registryClient == nil {
 		return nil
 	}
@@ -360,7 +362,7 @@ func (rs *REST) dryRun(ctx context.Context, app *application.App) (*release.Rele
 	}
 
 	chartPathBasicOptions.ExistedFile = destfile
-	rel, err := client.Install(&helmaction.InstallOptions{
+	rel, err := client.Install(ctx, &helmaction.InstallOptions{
 		Namespace:        app.Spec.TargetNamespace,
 		ReleaseName:      app.Spec.Name,
 		DependencyUpdate: true,

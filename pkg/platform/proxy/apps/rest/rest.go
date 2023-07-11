@@ -50,17 +50,11 @@ var _ storage.RESTStorageProvider = &StorageProvider{}
 func (s *StorageProvider) NewRESTStorage(apiResourceConfigSource serverstorage.APIResourceConfigSource, restOptionsGetter generic.RESTOptionsGetter) (genericserver.APIGroupInfo, bool) {
 	apiGroupInfo := genericserver.NewDefaultAPIGroupInfo(appsv1.GroupName, platform.Scheme, platform.ParameterCodec, platform.Codecs)
 
-	if apiResourceConfigSource.VersionEnabled(appsv1.SchemeGroupVersion) {
-		apiGroupInfo.VersionedResourcesStorageMap[appsv1.SchemeGroupVersion.Version] = s.v1Storage(restOptionsGetter, s.LoopbackClientConfig)
-	}
+	apiGroupInfo.VersionedResourcesStorageMap[appsv1.SchemeGroupVersion.Version] = s.v1Storage(restOptionsGetter, s.LoopbackClientConfig)
 
-	if apiResourceConfigSource.VersionEnabled(appsv1beta1.SchemeGroupVersion) {
-		apiGroupInfo.VersionedResourcesStorageMap[appsv1beta1.SchemeGroupVersion.Version] = s.v1Beta1Storage(restOptionsGetter, s.LoopbackClientConfig)
-	}
+	apiGroupInfo.VersionedResourcesStorageMap[appsv1beta1.SchemeGroupVersion.Version] = s.v1Beta1Storage(restOptionsGetter, s.LoopbackClientConfig)
 
-	if apiResourceConfigSource.VersionEnabled(appsv1beta2.SchemeGroupVersion) {
-		apiGroupInfo.VersionedResourcesStorageMap[appsv1beta2.SchemeGroupVersion.Version] = s.v1Beta2Storage(restOptionsGetter, s.LoopbackClientConfig)
-	}
+	apiGroupInfo.VersionedResourcesStorageMap[appsv1beta2.SchemeGroupVersion.Version] = s.v1Beta2Storage(restOptionsGetter, s.LoopbackClientConfig)
 
 	return apiGroupInfo, true
 }
@@ -83,6 +77,7 @@ func (s *StorageProvider) v1Storage(restOptionsGetter generic.RESTOptionsGetter,
 		"controllerrevisions":                   controllerRevisionStore.ControllerRevision,
 		"daemonsets":                            daemonSetStore.DaemonSet,
 		"daemonsets/pods":                       daemonSetStore.Pods,
+		"daemonsets/replicasets":                daemonSetStore.ReplicaSets,
 		"daemonsets/status":                     daemonSetStore.Status,
 		"daemonsets/events":                     daemonSetStore.Events,
 		"deployments":                           deploymentStore.Deployment,
@@ -90,11 +85,13 @@ func (s *StorageProvider) v1Storage(restOptionsGetter generic.RESTOptionsGetter,
 		"deployments/scale":                     deploymentStore.Scale,
 		"deployments/rollback":                  deploymentStore.RolloutUndo,
 		"deployments/pods":                      deploymentStore.Pods,
+		"deployments/replicasets":               deploymentStore.ReplicaSets,
 		"deployments/events":                    deploymentStore.Events,
 		"deployments/horizontalpodautoscalers":  deploymentStore.HPAs,
 		"statefulsets":                          statefulSetStore.StatefulSet,
 		"statefulsets/status":                   statefulSetStore.Status,
 		"statefulsets/pods":                     statefulSetStore.Pods,
+		"statefulsets/replicasets":              statefulSetStore.ReplicaSets,
 		"statefulsets/scale":                    statefulSetStore.Scale,
 		"statefulsets/events":                   statefulSetStore.Events,
 		"statefulsets/horizontalpodautoscalers": statefulSetStore.HPAs,
@@ -122,11 +119,13 @@ func (s *StorageProvider) v1Beta1Storage(restOptionsGetter generic.RESTOptionsGe
 		"deployments/scale":                     deploymentStore.Scale,
 		"deployments/rollback":                  deploymentStore.Rollback,
 		"deployments/pods":                      deploymentStore.Pods,
+		"deployments/replicasets":               deploymentStore.ReplicaSets,
 		"deployments/events":                    deploymentStore.Events,
 		"deployments/horizontalpodautoscalers":  deploymentStore.HPAs,
 		"statefulsets":                          statefulSetStore.StatefulSet,
 		"statefulsets/status":                   statefulSetStore.Status,
 		"statefulsets/pods":                     statefulSetStore.Pods,
+		"statefulsets/replicasets":              statefulSetStore.ReplicaSets,
 		"statefulsets/scale":                    statefulSetStore.Scale,
 		"statefulsets/events":                   statefulSetStore.Events,
 		"statefulsets/horizontalpodautoscalers": statefulSetStore.HPAs,
@@ -148,17 +147,20 @@ func (s *StorageProvider) v1Beta2Storage(restOptionsGetter generic.RESTOptionsGe
 		"controllerrevisions":                   controllerRevisionStore.ControllerRevision,
 		"daemonsets":                            daemonSetStore.DaemonSet,
 		"daemonsets/pods":                       daemonSetStore.Pods,
+		"daemonsets/replicasets":                daemonSetStore.ReplicaSets,
 		"daemonsets/status":                     daemonSetStore.Status,
 		"daemonsets/events":                     daemonSetStore.Events,
 		"deployments":                           deploymentStore.Deployment,
 		"deployments/status":                    deploymentStore.Status,
 		"deployments/scale":                     deploymentStore.Scale,
 		"deployments/pods":                      deploymentStore.Pods,
+		"deployments/replicasets":               deploymentStore.ReplicaSets,
 		"deployments/events":                    deploymentStore.Events,
 		"deployments/horizontalpodautoscalers":  deploymentStore.HPAs,
 		"statefulsets":                          statefulSetStore.StatefulSet,
 		"statefulsets/status":                   statefulSetStore.Status,
 		"statefulsets/pods":                     statefulSetStore.Pods,
+		"statefulsets/replicasets":              statefulSetStore.ReplicaSets,
 		"statefulsets/scale":                    statefulSetStore.Scale,
 		"statefulsets/events":                   statefulSetStore.Events,
 		"statefulsets/horizontalpodautoscalers": statefulSetStore.HPAs,

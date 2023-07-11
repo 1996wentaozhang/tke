@@ -38,7 +38,7 @@ import (
 
 const Path = "/registry/notification"
 
-const manifestPattern = `^application/vnd.docker.distribution.manifest.v\d\+(json|prettyjws)`
+const manifestPattern = `^application/(vnd.docker.distribution.manifest.v\d\+(json|prettyjws)|vnd.oci.image.(manifest|index).v1\+json|vnd.docker.distribution.manifest.list.v2\+json)`
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
@@ -173,6 +173,17 @@ func filterEvents(notification *Notification, re *regexp.Regexp) ([]*Event, erro
 			continue
 		}
 
+		if len(event.Target.Tag) == 0 {
+			log.Warn("Received a distribution event with empty tag",
+				log.String("id", event.ID),
+				log.String("target", fmt.Sprintf("%s:%s", event.Target.Repository, event.Target.Tag)),
+				log.String("digest", event.Target.Digest),
+				log.String("action", event.Action),
+				log.String("mediaType", event.Target.MediaType),
+				log.String("userAgent", event.Request.UserAgent))
+			continue
+		}
+
 		if checkEvent(&event) {
 			events = append(events, &event)
 			log.Debugf("Add event to collection: %s", event.ID)
@@ -190,7 +201,7 @@ func checkEvent(event *Event) bool {
 	}
 	// if it is pull action, check the user-agent
 	userAgent := strings.ToLower(strings.TrimSpace(event.Request.UserAgent))
-	return userAgent != "tke-registry-client"
+	return userAgent != registry.RegistryClientUserAgent
 }
 
 // ParseRepository splits a repository into three parts: tenantID, namespace and rest

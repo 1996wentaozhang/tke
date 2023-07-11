@@ -20,6 +20,7 @@ package storage
 
 import (
 	"context"
+	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -33,6 +34,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	platforminternalclient "tkestack.io/tke/api/client/clientset/internalversion/typed/platform/internalversion"
 	"tkestack.io/tke/pkg/platform/proxy"
+	"tkestack.io/tke/pkg/platform/util"
 	"tkestack.io/tke/pkg/util/apiclient"
 	"tkestack.io/tke/pkg/util/page"
 )
@@ -96,8 +98,15 @@ func listPodsByExtensions(ctx context.Context, client *kubernetes.Clientset, nam
 	}
 
 	// list all of the pod, by deployment labels
-	listOptions := metav1.ListOptions{LabelSelector: selector.String()}
-	podAllList, err := client.CoreV1().Pods(namespaceName).List(ctx, listOptions)
+	listPodsOptions := listOpts.DeepCopy()
+	listPodsOptions.Continue = ""
+	listPodsOptions.Limit = 0
+	if listPodsOptions.LabelSelector == "" {
+		listPodsOptions.LabelSelector = selector.String()
+	} else {
+		listPodsOptions.LabelSelector = listPodsOptions.LabelSelector + "," + selector.String()
+	}
+	podAllList, err := client.CoreV1().Pods(namespaceName).List(ctx, *listPodsOptions)
 	if err != nil {
 		return nil, errors.NewInternalError(err)
 	}
@@ -112,7 +121,9 @@ func listPodsByExtensions(ctx context.Context, client *kubernetes.Clientset, nam
 			}
 		}
 	}
-
+	pods := util.NewPods(podList.Items)
+	sort.Sort(pods)
+	podList.Items = pods.GetPods()
 	if listOpts.Continue != "" {
 		start, limit, err := page.DecodeContinue(ctx, "DaemonSet", name, listOpts.Continue)
 		if err != nil {
@@ -156,8 +167,15 @@ func listPodsByApps(ctx context.Context, client *kubernetes.Clientset, namespace
 	}
 
 	// list all of the pod, by deployment labels
-	listOptions := metav1.ListOptions{LabelSelector: selector.String()}
-	podAllList, err := client.CoreV1().Pods(namespaceName).List(ctx, listOptions)
+	listPodsOptions := listOpts.DeepCopy()
+	listPodsOptions.Continue = ""
+	listPodsOptions.Limit = 0
+	if listPodsOptions.LabelSelector == "" {
+		listPodsOptions.LabelSelector = selector.String()
+	} else {
+		listPodsOptions.LabelSelector = listPodsOptions.LabelSelector + "," + selector.String()
+	}
+	podAllList, err := client.CoreV1().Pods(namespaceName).List(ctx, *listPodsOptions)
 	if err != nil {
 		return nil, errors.NewInternalError(err)
 	}
@@ -172,7 +190,9 @@ func listPodsByApps(ctx context.Context, client *kubernetes.Clientset, namespace
 			}
 		}
 	}
-
+	pods := util.NewPods(podList.Items)
+	sort.Sort(pods)
+	podList.Items = pods.GetPods()
 	if listOpts.Continue != "" {
 		start, limit, err := page.DecodeContinue(ctx, "DaemonSet", name, listOpts.Continue)
 		if err != nil {

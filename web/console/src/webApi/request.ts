@@ -16,8 +16,10 @@
  * specific language governing permissions and limitations under the License.
  */
 import { changeForbiddentConfig } from '@/index.tke';
+import { createCSRFHeader } from '@helper';
 import Axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+import { message } from 'tea-component';
 
 const instance = Axios.create({
   timeout: 10000
@@ -28,7 +30,8 @@ const instance = Axios.create({
 instance.interceptors.request.use(
   config => {
     Object.assign(config.headers, {
-      'X-Remote-Extra-RequestID': uuidv4()
+      'X-Remote-Extra-RequestID': uuidv4(),
+      ...createCSRFHeader()
     });
     return config;
   },
@@ -42,23 +45,26 @@ instance.interceptors.response.use(
   ({ data }) => data,
   error => {
     console.error('response error:', error);
-    if (!error.response) {
-      error.response = {
-        data: {
-          message: `系统内部服务错误（${error?.config?.heraders?.['X-Remote-Extra-RequestID'] || ''}）`
-        }
-      };
-    }
 
-    if (error.response.status === 401) {
-      location.reload();
-    }
+    const errorMessage =
+      error?.response?.data?.message ??
+      `系统内部服务错误（${error?.config?.heraders?.['X-Remote-Extra-RequestID'] ?? ''}）`;
 
-    if (error.response.status === 403) {
-      changeForbiddentConfig({
-        isShow: true,
-        message: error.response.data.message
-      });
+    switch (error?.response?.status) {
+      case 401:
+        location.reload();
+        break;
+      case 403:
+        changeForbiddentConfig({
+          isShow: true,
+          message: errorMessage
+        });
+        break;
+      case 404:
+        // 404不一定要展示错误
+        break;
+      default:
+        message.error({ content: errorMessage });
     }
 
     return Promise.reject(error);
@@ -69,9 +75,9 @@ export default instance;
 
 export const Request = instance;
 
-export const generateQueryString = (query: Record<string, any>) => {
+export const generateQueryString = (query: Record<string, any>, joinKey = '&') => {
   return Object.entries(query)
     .filter(([_, value]) => value !== undefined && value !== null && value !== '')
     .map(([key, value]) => `${key}=${value}`)
-    .join('&');
+    .join(joinKey);
 };

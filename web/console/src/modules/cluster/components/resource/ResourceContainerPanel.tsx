@@ -32,7 +32,7 @@ import { UpdateResourcePanel } from './resourceEdition/UpdateResourcePanel';
 import { ResourceListPanel } from './ResourceListPanel';
 import { HPAPanel } from '@src/modules/cluster/components/scale/hpa';
 import { CronHpaPanel } from '@src/modules/cluster/components/scale/cronhpa';
-import { VMDetailPanel } from './virtual-machine';
+import { VMDetailPanel, SnapshotTablePanel } from './virtual-machine';
 
 interface ResourceContainerPanelState {
   /** 共享锁 */
@@ -98,7 +98,11 @@ export class ResourceContainerPanel extends React.Component<RootProps, ResourceC
     if (newMode !== '' && oldMode !== newMode && newMode !== mode) {
       actions.resource.selectMode(newMode);
       // 这里是判断回退动作，取消动作等的时候，回到list页面，需要重新拉取一下，激活一下轮训的状态等
-      newUrlParam['sub'] === 'sub' && !isEmpty(resourceInfo) && newMode === 'list' && actions.resource.poll();
+      if (newUrlParam['sub'] === 'sub' && !isEmpty(resourceInfo) && newMode === 'list') {
+        actions.resource.resetPaging();
+        actions.resource.poll();
+      }
+
       // newUrlParam['sub'] === 'sub' && !isEmpty(resourceInfo) && newMode === 'list' && newResourceName !== 'hpa' && actions.resource.poll();
     }
 
@@ -169,6 +173,8 @@ export class ResourceContainerPanel extends React.Component<RootProps, ResourceC
       }
     } else if (mode === 'detail' && resourceName === 'virtual-machine') {
       return <VMDetailPanel />;
+    } else if (mode === 'snapshot' && resourceName === 'virtual-machine') {
+      return <SnapshotTablePanel route={route} />;
     } else {
       // 判断应该展示什么组件
       switch (mode) {

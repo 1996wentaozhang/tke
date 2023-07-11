@@ -19,6 +19,7 @@
 package action
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"time"
@@ -30,6 +31,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	"tkestack.io/tke/pkg/util/file"
 	"tkestack.io/tke/pkg/util/log"
 )
@@ -40,12 +42,16 @@ type InstallOptions struct {
 
 	DryRun           bool
 	DependencyUpdate bool
+	CreateNamespace  bool
 	Timeout          time.Duration
 	Namespace        string
 	ReleaseName      string
 	Description      string
 	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
-	IsUpgrade bool
+	IsUpgrade   bool
+	Atomic      bool
+	Wait        bool
+	WaitForJobs bool
 
 	Values map[string]interface{}
 }
@@ -82,16 +88,36 @@ func (cp ChartPathOptions) ApplyTo(opt *action.ChartPathOptions) {
 	opt.Version = cp.Version
 }
 
-func (c *Client) Install(options *InstallOptions) (*release.Release, error) {
-	return c.InstallWithLocal(options, "")
+func (c *Client) Install(ctx context.Context, options *InstallOptions) (*release.Release, error) {
+	return c.InstallWithLocal(ctx, options, "")
 }
 
 // Install installs a chart archive
 // if chartLocalFile is not empty, chart files exists in the project
-func (c *Client) InstallWithLocal(options *InstallOptions, chartLocalFile string) (*release.Release, error) {
+func (c *Client) InstallWithLocal(ctx context.Context, options *InstallOptions, chartLocalFile string) (*release.Release, error) {
 	actionConfig, err := c.buildActionConfig(options.Namespace)
 	if err != nil {
 		return nil, err
+	}
+
+	histClient := action.NewHistory(actionConfig)
+	histClient.Max = 1
+	rels, err := histClient.Run(options.ReleaseName)
+	if err != nil {
+		if !errors.Is(err, driver.ErrReleaseNotFound) {
+			return nil, err
+		}
+	} else {
+		for _, rel := range rels {
+			if rel.Info.Status == release.StatusDeployed {
+				// if release status is deployed, ignore it
+				log.Infof("Release %s is already exist. igonre it now.", options.ReleaseName)
+				return nil, nil
+			}
+			// if release status is other, delete it
+			log.Infof("install release %s is already exist, status is %s. delete it now.", options.ReleaseName, rel.Info.Status)
+			actionConfig.Releases.Delete(rel.Name, rel.Version)
+		}
 	}
 	client := action.NewInstall(actionConfig)
 	client.DryRun = options.DryRun
@@ -101,7 +127,10 @@ func (c *Client) InstallWithLocal(options *InstallOptions, chartLocalFile string
 	client.ReleaseName = options.ReleaseName
 	client.Description = options.Description
 	client.IsUpgrade = options.IsUpgrade
-	client.Atomic = true
+	client.Atomic = options.Atomic
+	client.CreateNamespace = options.CreateNamespace
+	client.Wait = options.Wait
+	client.WaitForJobs = options.WaitForJobs
 
 	options.ChartPathOptions.ApplyTo(&client.ChartPathOptions)
 
@@ -176,7 +205,7 @@ func (c *Client) InstallWithLocal(options *InstallOptions, chartLocalFile string
 		}
 	}
 
-	return client.Run(chartRequested, options.Values)
+	return client.RunWithContext(ctx, chartRequested, options.Values)
 }
 
 // isChartInstallable validates if a chart can be installed

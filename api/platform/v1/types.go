@@ -108,7 +108,8 @@ type ProxyType string
 const (
 	// SSH jumper server proxy
 	SSHJumpServer ProxyType = "SSHJumpServer"
-	// SOCKS5 ProxyType = "SOCKS5"
+	// SOCKS5 proxy
+	SOCKS5 ProxyType = "SOCKS5"
 )
 
 const (
@@ -124,6 +125,10 @@ const (
 	AnywhereLocalizationsAnno = "tkestack.io/anywhere-localizations"
 	// AnywhereMachinesAnno contains base64 machines json data
 	AnywhereMachinesAnno = "tkestack.io/anywhere-machines"
+	// AnywhereUpgradeRetryComponentAnno describe curent retry component when upgrade failed
+	AnywhereUpgradeRetryComponentAnno = "tkestack.io/anywhere-upgrade-retry-component"
+	// AnywhereUpgradeRetryComponentAnno describe anywhere upgrade stats
+	AnywhereUpgradeStatsAnno = "tkestack.io/anywhere-upgrade-stats"
 	// ClusterNameLable contains related cluster's name for no-cluster resources
 	ClusterNameLable = "tkestack.io/cluster-name"
 	// HubAPIServerAnno describe hub cluster api server url
@@ -223,6 +228,9 @@ type ClusterSpec struct {
 	// BootstrapApps will install apps during creating cluster
 	// +optional
 	BootstrapApps BootstrapApps `json:"bootstrapApps,omitempty" protobuf:"bytes,26,opt,name=bootstrapApps"`
+	// AppVersion is the overall version of system components
+	// +optional
+	AppVersion string `json:"appVersion,omitempty" protobuf:"bytes,27,opt,name=appVersion"`
 }
 
 // ClusterStatus represents information about the status of a cluster.
@@ -274,6 +282,12 @@ type ClusterStatus struct {
 	NodeCIDRMaskSizeIPv6 int32 `json:"nodeCIDRMaskSizeIPv6,omitempty" protobuf:"varint,19,opt,name=nodeCIDRMaskSizeIPv6"`
 	// +optional
 	KubeVendor KubeVendorType `json:"kubeVendor" protobuf:"bytes,20,opt,name=kubeVendor"`
+	// AppVersion is the overall version of system components
+	// +optional
+	AppVersion string `json:"appVersion,omitempty" protobuf:"bytes,21,opt,name=appVersion"`
+	// ComponentPhase is the status of components, contains "deployed", "pending-upgrade", "failed" status
+	// +optional
+	ComponentPhase ComponentPhase `json:"componentPhase,omitempty" protobuf:"bytes,22,opt,name=componentPhase"`
 }
 
 // FinalizerName is the name identifying a finalizer during cluster lifecycle.
@@ -313,6 +327,8 @@ type ClusterPhase string
 const (
 	// ClusterInitializing is the initialize phase.
 	ClusterInitializing ClusterPhase = "Initializing"
+	// ClusterWaiting indicates that the cluster is waiting for registration.
+	ClusterWaiting ClusterPhase = "Waiting"
 	// ClusterRunning is the normal running phase.
 	ClusterRunning ClusterPhase = "Running"
 	// ClusterFailed is the failed phase.
@@ -329,6 +345,18 @@ const (
 	ClusterUpscaling ClusterPhase = "Upscaling"
 	// ClusterDownscaling means the cluster is undergoing graceful down scaling.
 	ClusterDownscaling ClusterPhase = "Downscaling"
+)
+
+// ComponentPhase defines the phase of anywhere cluster component
+type ComponentPhase string
+
+const (
+	// ComponentDeployed is the normal phase of anywhere cluster component
+	ComponentDeployed ComponentPhase = "deployed"
+	// ComponentPendingUpgrade means the anywhere cluster component is upgrading
+	ComponentPendingUpgrade ComponentPhase = "pending-upgrade"
+	// ComponentFailed means the anywhere cluster component upgrade failed
+	ComponentFailed ComponentPhase = "failed"
 )
 
 // ClusterCondition contains details for the current condition of this cluster.

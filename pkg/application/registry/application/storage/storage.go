@@ -41,6 +41,8 @@ import (
 	applicationutil "tkestack.io/tke/pkg/application/util"
 	platformfilter "tkestack.io/tke/pkg/platform/apiserver/filter"
 	"tkestack.io/tke/pkg/util/log"
+	"tkestack.io/tke/pkg/util/printers"
+	printerstorage "tkestack.io/tke/pkg/util/printers/storage"
 )
 
 // Storage includes storage for application and all sub resources.
@@ -64,8 +66,10 @@ func NewStorage(optsGetter genericregistry.RESTOptionsGetter,
 		CreateStrategy: strategy,
 		UpdateStrategy: strategy,
 		DeleteStrategy: strategy,
+
+		ShouldDeleteDuringUpdate: applicationtrategy.ShouldDeleteDuringUpdate,
 	}
-	store.TableConvertor = rest.NewDefaultTableConvertor(store.DefaultQualifiedResource)
+	store.TableConvertor = printerstorage.TableConvertor{TableGenerator: printers.NewTableGenerator().With(AddHandlers)}
 	options := &genericregistry.StoreOptions{
 		RESTOptions: optsGetter,
 		AttrFunc:    applicationtrategy.GetAttrs,
@@ -196,7 +200,7 @@ func (r *GenericREST) Delete(ctx context.Context, name string, deleteValidation 
 		return nil, false, err
 	}
 
-	if app.DeletionTimestamp.IsZero() {
+	if app.DeletionTimestamp.IsZero() || app.Status.Phase != applicationapi.AppPhaseTerminating {
 		key, err := r.Store.KeyFunc(ctx, name)
 		if err != nil {
 			return nil, false, err

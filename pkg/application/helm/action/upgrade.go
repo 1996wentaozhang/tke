@@ -19,6 +19,7 @@
 package action
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -61,10 +62,13 @@ type UpgradeOptions struct {
 	DependencyUpdate bool
 	ReleaseName      string
 	Values           map[string]interface{}
+	Atomic           bool
+	Wait             bool
+	WaitForJobs      bool
 }
 
 // Upgrade upgrade a helm release
-func (c *Client) Upgrade(options *UpgradeOptions) (*release.Release, error) {
+func (c *Client) Upgrade(ctx context.Context, options *UpgradeOptions) (*release.Release, error) {
 	actionConfig, err := c.buildActionConfig(options.Namespace)
 	if err != nil {
 		return nil, err
@@ -73,9 +77,10 @@ func (c *Client) Upgrade(options *UpgradeOptions) (*release.Release, error) {
 		// If a release does not exist, install it.
 		histClient := action.NewHistory(actionConfig)
 		histClient.Max = 1
-		if _, err := histClient.Run(options.ReleaseName); err == driver.ErrReleaseNotFound {
-			log.Infof("Release %q does not exist. Installing it now.\n", options.ReleaseName)
-			return c.Install(&InstallOptions{
+		rels, err := histClient.Run(options.ReleaseName)
+		if errors.Is(err, driver.ErrReleaseNotFound) {
+			log.Infof("Release %d does not exist. Installing it now.", options.ReleaseName)
+			return c.Install(ctx, &InstallOptions{
 				DryRun:           options.DryRun,
 				DependencyUpdate: options.DependencyUpdate,
 				Timeout:          options.Timeout,
@@ -84,9 +89,19 @@ func (c *Client) Upgrade(options *UpgradeOptions) (*release.Release, error) {
 				Description:      options.Description,
 				ChartPathOptions: options.ChartPathOptions,
 				Values:           options.Values,
+				Atomic:           options.Atomic,
+				Wait:             options.Wait,
+				WaitForJobs:      options.WaitForJobs,
 			})
 		} else if err != nil {
 			return nil, err
+		}
+		for _, rel := range rels {
+			if rel.Info.Status == release.StatusPendingInstall || rel.Info.Status == release.StatusPendingUpgrade || rel.Info.Status == release.StatusPendingRollback {
+				// if release status is pending, delete it
+				log.Infof("upgrade release %s is already exist, status is %s. delete it now.", options.ReleaseName, rel.Info.Status)
+				actionConfig.Releases.Delete(rel.Name, rel.Version)
+			}
 		}
 	}
 
@@ -98,6 +113,9 @@ func (c *Client) Upgrade(options *UpgradeOptions) (*release.Release, error) {
 	client.ResetValues = options.ResetValues
 	client.ReuseValues = options.ReuseValues
 	client.MaxHistory = options.MaxHistory
+	client.Atomic = options.Atomic
+	client.Wait = options.Wait
+	client.WaitForJobs = options.WaitForJobs
 
 	options.ChartPathOptions.ApplyTo(&client.ChartPathOptions)
 
@@ -154,5 +172,5 @@ func (c *Client) Upgrade(options *UpgradeOptions) (*release.Release, error) {
 	if chartRequested.Metadata.Deprecated {
 		log.Warnf("This chart %s/%s is deprecated", options.ChartRepo, options.Chart)
 	}
-	return client.Run(options.ReleaseName, chartRequested, options.Values)
+	return client.RunWithContext(ctx, options.ReleaseName, chartRequested, options.Values)
 }

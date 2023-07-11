@@ -239,6 +239,19 @@ func (c *Controller) syncItem(key string) error {
 	if err != nil {
 		return err
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		select {
+		case <-c.stopCh:
+			log.Info("stop ch", log.String("namespace", namespace), log.String("name", name))
+			cancel()
+			return
+		case <-ctx.Done():
+			log.Info("success done", log.String("namespace", namespace), log.String("name", name))
+			return
+		}
+	}()
 	// app holds the latest App info from apiserver
 	app, err := c.lister.Apps(namespace).Get(name)
 	switch {
@@ -259,16 +272,21 @@ func (c *Controller) syncItem(key string) error {
 				log.String("namespace", namespace),
 				log.String("name", name))
 			_ = c.processDeletion(key)
-			err = c.appResourcesDeleter.Delete(context.Background(), namespace, name)
+			err = c.appResourcesDeleter.Delete(ctx, namespace, name)
 			metrics.GaugeApplicationInstallFailed.WithLabelValues(app.Spec.TargetCluster, app.Name).Set(0)
 			metrics.GaugeApplicationUpgradeFailed.WithLabelValues(app.Spec.TargetCluster, app.Name).Set(0)
 			metrics.GaugeApplicationRollbackFailed.WithLabelValues(app.Spec.TargetCluster, app.Name).Set(0)
 			metrics.GaugeApplicationSyncFailed.WithLabelValues(app.Spec.TargetCluster, app.Name).Set(0)
 			// If err is not nil, do not update object status when phase is Terminating.
 			// DeletionTimestamp is not empty and object will be deleted when you request updateStatus
+		} else if app.Status.Phase == "Isolated" {
+			metrics.GaugeApplicationInstallFailed.WithLabelValues(app.Spec.TargetCluster, app.Name).Set(0)
+			metrics.GaugeApplicationUpgradeFailed.WithLabelValues(app.Spec.TargetCluster, app.Name).Set(0)
+			metrics.GaugeApplicationRollbackFailed.WithLabelValues(app.Spec.TargetCluster, app.Name).Set(0)
+			metrics.GaugeApplicationSyncFailed.WithLabelValues(app.Spec.TargetCluster, app.Name).Set(0)
 		} else {
 			cachedApp := c.cache.getOrCreate(key)
-			err = c.processUpdate(context.Background(), cachedApp, app, key)
+			err = c.processUpdate(ctx, cachedApp, app, key)
 		}
 	}
 	return err
@@ -417,6 +435,9 @@ func (c *Controller) syncAppFromRelease(ctx context.Context, cachedApp *cachedAp
 			return app, fmt.Errorf("update chart version failed %v", err)
 		}
 		return app, err
+	}
+	if app.Status.Phase == applicationv1.AppPhaseSucceeded && hasSynced(app) {
+		return app, nil
 	}
 	return c.updateStatus(ctx, app, &app.Status, newStatus)
 }

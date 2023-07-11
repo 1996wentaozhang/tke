@@ -1,26 +1,43 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Table, Justify, Button, Select, TagSearchBox, Text } from 'tea-component';
-import { useRecoilValueLoadable, useRecoilState } from 'recoil';
-import { namespaceListState, namespaceSelectionState } from '../../store/base';
+import { useRecoilValueLoadable, useRecoilState, useRecoilValue } from 'recoil';
+import { namespaceListState, namespaceSelectionState, clusterIdState } from '../../store/base';
 import { router } from '@src/modules/cluster/router';
+import { VmMonitorDialog } from '../../components';
 
-export const VMListActionPanel = ({ route, reFetch, onQueryChange }) => {
+export const VMListActionPanel = ({ route, reFetch, vmList, onQueryChange }) => {
   const namespaceListLoadable = useRecoilValueLoadable(namespaceListState);
   const [namespaceSelection, setNamespaceSelection] = useRecoilState(namespaceSelectionState);
+
+  const clusterId = useRecoilValue(clusterIdState);
 
   return (
     <Table.ActionPanel>
       <Justify
         left={
-          <Button
-            type="primary"
-            onClick={() => {
-              const urlParams = router.resolve(route);
-              router.navigate(Object.assign({}, urlParams, { mode: 'create' }), route.queries);
-            }}
-          >
-            新建
-          </Button>
+          <>
+            <Button
+              type="primary"
+              onClick={() => {
+                const urlParams = router.resolve(route);
+                router.navigate(Object.assign({}, urlParams, { mode: 'create' }), route.queries);
+              }}
+            >
+              新建
+            </Button>
+
+            <VmMonitorDialog clusterId={clusterId} namespace={namespaceSelection} vmList={vmList} />
+
+            <Button
+              type="primary"
+              onClick={() => {
+                const urlParams = router.resolve(route);
+                router.navigate(Object.assign({}, urlParams, { mode: 'snapshot' }), route.queries);
+              }}
+            >
+              快照
+            </Button>
+          </>
         }
         right={
           <>
@@ -39,7 +56,11 @@ export const VMListActionPanel = ({ route, reFetch, onQueryChange }) => {
                   ? namespaceListLoadable?.contents?.map(value => ({ value }))
                   : []
               }
-              onChange={value => setNamespaceSelection(value)}
+              onChange={value => {
+                setNamespaceSelection(value);
+                const urlParams = router.resolve(route);
+                router.navigate(urlParams, Object.assign({}, route.queries, { np: value }));
+              }}
             />
 
             <TagSearchBox
