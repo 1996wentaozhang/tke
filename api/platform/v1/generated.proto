@@ -353,6 +353,26 @@ message ClusterCredential {
   // ImpersonateUserExtra contains additional information for impersonated user.
   // +optional
   map<string, string> asUserExtra = 18;
+
+  // For kube-apiserver server crt
+  // +optional
+  optional bytes serverCrt = 19;
+
+  // For kube-apiserver server key
+  // +optional
+  optional bytes serverKey = 20;
+
+  // For kube-apiserver issue ServiceAccount
+  // +optional
+  optional bytes serviceAccountKey = 21;
+
+  // For kubelet token auth
+  // +optional
+  optional string kubeletPasswd = 22;
+
+  // For kubeProxy token auth
+  // +optional
+  optional string kubeProxyPasswd = 23;
 }
 
 // ClusterCredentialList is the whole list of all ClusterCredential which owned by a tenant.
@@ -650,6 +670,14 @@ message ClusterSpec {
   // AppVersion is the overall version of system components
   // +optional
   optional string appVersion = 27;
+
+  // ClusterLevel is the expect level of cluster
+  // +optional
+  optional string clusterLevel = 28;
+
+  // MetaClusterRef contains the meta cluster name of cluster
+  // +optional
+  optional k8s.io.api.core.v1.LocalObjectReference metaClusterRef = 29;
 }
 
 // ClusterStatus represents information about the status of a cluster.
@@ -727,6 +755,10 @@ message ClusterStatus {
   // ComponentPhase is the status of components, contains "deployed", "pending-upgrade", "failed" status
   // +optional
   optional string componentPhase = 22;
+
+  // ClusterLevel is the real level of cluster
+  // +optional
+  optional string clusterLevel = 23;
 }
 
 // ConfigMap holds configuration data for tke to consume.

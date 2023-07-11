@@ -50,6 +50,8 @@ require (
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/go-openapi/inflect v0.19.0
+	github.com/go-openapi/strfmt v0.19.5 // indirect
+	github.com/go-openapi/validate v0.19.8 // indirect
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/gofuzz v1.2.0
 	github.com/gorilla/mux v1.8.0
@@ -89,6 +91,7 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.1
 	go.uber.org/zap v1.19.1
 	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd
+	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8

@@ -1455,6 +1455,11 @@ func autoConvert_v1_ClusterCredential_To_platform_ClusterCredential(in *ClusterC
 	out.Impersonate = in.Impersonate
 	out.ImpersonateGroups = *(*[]string)(unsafe.Pointer(&in.ImpersonateGroups))
 	out.ImpersonateUserExtra = *(*platform.ImpersonateUserExtra)(unsafe.Pointer(&in.ImpersonateUserExtra))
+	out.ServerCrt = *(*[]byte)(unsafe.Pointer(&in.ServerCrt))
+	out.ServerKey = *(*[]byte)(unsafe.Pointer(&in.ServerKey))
+	out.ServiceAccountKey = *(*[]byte)(unsafe.Pointer(&in.ServiceAccountKey))
+	out.KubeletPasswd = (*string)(unsafe.Pointer(in.KubeletPasswd))
+	out.KubeProxyPasswd = (*string)(unsafe.Pointer(in.KubeProxyPasswd))
 	return nil
 }
 
@@ -1482,6 +1487,11 @@ func autoConvert_platform_ClusterCredential_To_v1_ClusterCredential(in *platform
 	out.Impersonate = in.Impersonate
 	out.ImpersonateGroups = *(*[]string)(unsafe.Pointer(&in.ImpersonateGroups))
 	out.ImpersonateUserExtra = *(*ImpersonateUserExtra)(unsafe.Pointer(&in.ImpersonateUserExtra))
+	out.ServerCrt = *(*[]byte)(unsafe.Pointer(&in.ServerCrt))
+	out.ServerKey = *(*[]byte)(unsafe.Pointer(&in.ServerKey))
+	out.ServiceAccountKey = *(*[]byte)(unsafe.Pointer(&in.ServiceAccountKey))
+	out.KubeletPasswd = (*string)(unsafe.Pointer(in.KubeletPasswd))
+	out.KubeProxyPasswd = (*string)(unsafe.Pointer(in.KubeProxyPasswd))
 	return nil
 }
 
@@ -1872,6 +1882,8 @@ func autoConvert_v1_ClusterSpec_To_platform_ClusterSpec(in *ClusterSpec, out *pl
 	out.ScalingMachines = *(*[]platform.ClusterMachine)(unsafe.Pointer(&in.ScalingMachines))
 	out.BootstrapApps = *(*platform.BootstrapApps)(unsafe.Pointer(&in.BootstrapApps))
 	out.AppVersion = in.AppVersion
+	out.ClusterLevel = (*string)(unsafe.Pointer(in.ClusterLevel))
+	out.MetaClusterRef = (*corev1.LocalObjectReference)(unsafe.Pointer(in.MetaClusterRef))
 	return nil
 }
 
@@ -1911,6 +1923,8 @@ func autoConvert_platform_ClusterSpec_To_v1_ClusterSpec(in *platform.ClusterSpec
 	out.NetworkArgs = *(*map[string]string)(unsafe.Pointer(&in.NetworkArgs))
 	out.BootstrapApps = *(*BootstrapApps)(unsafe.Pointer(&in.BootstrapApps))
 	out.AppVersion = in.AppVersion
+	out.ClusterLevel = (*string)(unsafe.Pointer(in.ClusterLevel))
+	out.MetaClusterRef = (*corev1.LocalObjectReference)(unsafe.Pointer(in.MetaClusterRef))
 	return nil
 }
 
@@ -1943,6 +1957,7 @@ func autoConvert_v1_ClusterStatus_To_platform_ClusterStatus(in *ClusterStatus, o
 	out.KubeVendor = platform.KubeVendorType(in.KubeVendor)
 	out.AppVersion = in.AppVersion
 	out.ComponentPhase = platform.ComponentPhase(in.ComponentPhase)
+	out.ClusterLevel = (*string)(unsafe.Pointer(in.ClusterLevel))
 	return nil
 }
 
@@ -1975,6 +1990,7 @@ func autoConvert_platform_ClusterStatus_To_v1_ClusterStatus(in *platform.Cluster
 	out.KubeVendor = KubeVendorType(in.KubeVendor)
 	out.AppVersion = in.AppVersion
 	out.ComponentPhase = ComponentPhase(in.ComponentPhase)
+	out.ClusterLevel = (*string)(unsafe.Pointer(in.ClusterLevel))
 	return nil
 }
 

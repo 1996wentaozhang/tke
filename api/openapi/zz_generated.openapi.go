@@ -55069,6 +55069,41 @@ func schema_tke_api_platform_v1_ClusterCredential(ref common.ReferenceCallback) 
 							},
 						},
 					},
+					"serverCrt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "For kube-apiserver server crt",
+							Type:        []string{"string"},
+							Format:      "byte",
+						},
+					},
+					"serverKey": {
+						SchemaProps: spec.SchemaProps{
+							Description: "For kube-apiserver server key",
+							Type:        []string{"string"},
+							Format:      "byte",
+						},
+					},
+					"serviceAccountKey": {
+						SchemaProps: spec.SchemaProps{
+							Description: "For kube-apiserver issue ServiceAccount",
+							Type:        []string{"string"},
+							Format:      "byte",
+						},
+					},
+					"kubeletPasswd": {
+						SchemaProps: spec.SchemaProps{
+							Description: "For kubelet token auth",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"kubeProxyPasswd": {
+						SchemaProps: spec.SchemaProps{
+							Description: "For kubeProxy token auth",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"tenantID", "clusterName"},
 			},
@@ -56076,6 +56111,19 @@ func schema_tke_api_platform_v1_ClusterSpec(ref common.ReferenceCallback) common
 							Format:      "",
 						},
 					},
+					"clusterLevel": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClusterLevel is the expect level of cluster",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metaClusterRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MetaClusterRef contains the meta cluster name of cluster",
+							Ref:         ref("k8s.io/api/core/v1.LocalObjectReference"),
+						},
+					},
 				},
 				Required: []string{"tenantID", "type", "version"},
 			},
@@ -56268,6 +56316,13 @@ func schema_tke_api_platform_v1_ClusterStatus(ref common.ReferenceCallback) comm
 					"componentPhase": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ComponentPhase is the status of components, contains \"deployed\", \"pending-upgrade\", \"failed\" status",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"clusterLevel": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClusterLevel is the real level of cluster",
 							Type:        []string{"string"},
 							Format:      "",
 						},

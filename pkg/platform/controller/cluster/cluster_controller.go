@@ -366,6 +366,8 @@ func (c *Controller) reconcile(ctx context.Context, key string, cluster *platfor
 		if err == nil {
 			log.FromContext(ctx).Info("Cluster has been successfully deleted")
 		}
+	case platformv1.ClusterRecovering:
+		err = c.onUpdate(ctx, cluster)
 	default:
 		log.FromContext(ctx).Info("unknown cluster phase", "status.phase", cluster.Status.Phase)
 	}

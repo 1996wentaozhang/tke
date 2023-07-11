@@ -231,6 +231,12 @@ type ClusterSpec struct {
 	// AppVersion is the overall version of system components
 	// +optional
 	AppVersion string `json:"appVersion,omitempty" protobuf:"bytes,27,opt,name=appVersion"`
+	// ClusterLevel is the expect level of cluster
+	// +optional
+	ClusterLevel *string `json:"clusterLevel,omitempty" protobuf:"bytes,28,opt,name=clusterLevel"`
+	// MetaClusterRef contains the meta cluster name of cluster
+	// +optional
+	MetaClusterRef *corev1.LocalObjectReference `json:"metaClusterRef,omitempty" protobuf:"bytes,29,opt,name=metaClusterRef"`
 }
 
 // ClusterStatus represents information about the status of a cluster.
@@ -288,6 +294,9 @@ type ClusterStatus struct {
 	// ComponentPhase is the status of components, contains "deployed", "pending-upgrade", "failed" status
 	// +optional
 	ComponentPhase ComponentPhase `json:"componentPhase,omitempty" protobuf:"bytes,22,opt,name=componentPhase"`
+	// ClusterLevel is the real level of cluster
+	// +optional
+	ClusterLevel *string `json:"clusterLevel,omitempty" protobuf:"bytes,23,opt,name=clusterLevel"`
 }
 
 // FinalizerName is the name identifying a finalizer during cluster lifecycle.
@@ -345,6 +354,8 @@ const (
 	ClusterUpscaling ClusterPhase = "Upscaling"
 	// ClusterDownscaling means the cluster is undergoing graceful down scaling.
 	ClusterDownscaling ClusterPhase = "Downscaling"
+	// ClusterRecovering means the cluster is recovering form confined.
+	ClusterRecovering ClusterPhase = "Recovering"
 )
 
 // ComponentPhase defines the phase of anywhere cluster component
@@ -463,6 +474,21 @@ type ClusterCredential struct {
 	// ImpersonateUserExtra contains additional information for impersonated user.
 	// +optional
 	ImpersonateUserExtra ImpersonateUserExtra `json:"as-user-extra,omitempty" protobuf:"bytes,18,opt,name=asUserExtra"`
+	// For kube-apiserver server crt
+	// +optional
+	ServerCrt []byte `json:"serverCrt,omitempty" protobuf:"bytes,19,opt,name=serverCrt"`
+	// For kube-apiserver server key
+	// +optional
+	ServerKey []byte `json:"serverKey,omitempty" protobuf:"bytes,20,opt,name=serverKey"`
+	// For kube-apiserver issue ServiceAccount
+	// +optional
+	ServiceAccountKey []byte `json:"serviceAccountKey,omitempty" protobuf:"bytes,21,opt,name=serviceAccountKey"`
+	// For kubelet token auth
+	// +optional
+	KubeletPasswd *string `json:"kubeletPasswd,omitempty" protobuf:"bytes,22,opt,name=kubeletPasswd"`
+	// For kubeProxy token auth
+	// +optional
+	KubeProxyPasswd *string `json:"kubeProxyPasswd,omitempty" protobuf:"bytes,23,opt,name=kubeProxyPasswd"`
 }
 
 type ImpersonateUserExtra map[string]string

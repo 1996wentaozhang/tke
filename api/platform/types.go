@@ -220,6 +220,12 @@ type ClusterSpec struct {
 	// AppVersion is the overall version of system components
 	// +optional
 	AppVersion string
+	// ClusterLevel is the expect level of cluster
+	// +optional
+	ClusterLevel *string
+	// MetaClusterRef contains the meta cluster name of cluster
+	// +optional
+	MetaClusterRef *corev1.LocalObjectReference
 }
 
 // ClusterStatus represents information about the status of a cluster.
@@ -277,6 +283,9 @@ type ClusterStatus struct {
 	// ComponentPhase is the status of components, contains "deployed", "pending-upgrade", "failed" status
 	// +optional
 	ComponentPhase ComponentPhase
+	// ClusterLevel is the real level of cluster
+	// +optional
+	ClusterLevel *string
 }
 
 // FinalizerName is the name identifying a finalizer during cluster lifecycle.
@@ -330,6 +339,8 @@ const (
 	ClusterUpscaling ClusterPhase = "Upscaling"
 	// ClusterDownscaling means the cluster is undergoing graceful down scaling.
 	ClusterDownscaling ClusterPhase = "Downscaling"
+	// ClusterRecovering means the cluster is recovering form confined.
+	ClusterRecovering ClusterPhase = "Recovering"
 )
 
 // ComponentPhase defines the phase of anywhere cluster component
@@ -448,6 +459,21 @@ type ClusterCredential struct {
 	// ImpersonateUserExtra contains additional information for impersonated user.
 	// +optional
 	ImpersonateUserExtra ImpersonateUserExtra
+	// For kube-apiserver server crt
+	// +optional
+	ServerCrt []byte
+	// For kube-apiserver server key
+	// +optional
+	ServerKey []byte
+	// For kube-apiserver issue ServiceAccount
+	// +optional
+	ServiceAccountKey []byte
+	// For kubelet token auth
+	// +optional
+	KubeletPasswd *string
+	// For kubeProxy token auth
+	// +optional
+	KubeProxyPasswd *string
 }
 
 type ImpersonateUserExtra map[string]string

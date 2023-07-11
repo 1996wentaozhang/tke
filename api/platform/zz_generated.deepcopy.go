@@ -626,6 +626,31 @@ func (in *ClusterCredential) DeepCopyInto(out *ClusterCredential) {
 			(*out)[key] = val
 		}
 	}
+	if in.ServerCrt != nil {
+		in, out := &in.ServerCrt, &out.ServerCrt
+		*out = make([]byte, len(*in))
+		copy(*out, *in)
+	}
+	if in.ServerKey != nil {
+		in, out := &in.ServerKey, &out.ServerKey
+		*out = make([]byte, len(*in))
+		copy(*out, *in)
+	}
+	if in.ServiceAccountKey != nil {
+		in, out := &in.ServiceAccountKey, &out.ServiceAccountKey
+		*out = make([]byte, len(*in))
+		copy(*out, *in)
+	}
+	if in.KubeletPasswd != nil {
+		in, out := &in.KubeletPasswd, &out.KubeletPasswd
+		*out = new(string)
+		**out = **in
+	}
+	if in.KubeProxyPasswd != nil {
+		in, out := &in.KubeProxyPasswd, &out.KubeProxyPasswd
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
@@ -1144,6 +1169,16 @@ func (in *ClusterSpec) DeepCopyInto(out *ClusterSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.ClusterLevel != nil {
+		in, out := &in.ClusterLevel, &out.ClusterLevel
+		*out = new(string)
+		**out = **in
+	}
+	if in.MetaClusterRef != nil {
+		in, out := &in.MetaClusterRef, &out.MetaClusterRef
+		*out = new(v1.LocalObjectReference)
+		**out = **in
+	}
 	return
 }
 
@@ -1187,6 +1222,11 @@ func (in *ClusterStatus) DeepCopyInto(out *ClusterStatus) {
 		in, out := &in.RegistryIPs, &out.RegistryIPs
 		*out = make([]string, len(*in))
 		copy(*out, *in)
+	}
+	if in.ClusterLevel != nil {
+		in, out := &in.ClusterLevel, &out.ClusterLevel
+		*out = new(string)
+		**out = **in
 	}
 	return
 }

@@ -202,18 +202,23 @@ func (ClusterCondition) SwaggerDoc() map[string]string {
 }
 
 var map_ClusterCredential = map[string]string{
-	"":               "ClusterCredential records the credential information needed to access the cluster.",
-	"etcdCACert":     "For TKE in global reuse",
-	"caCert":         "For connect the cluster",
-	"clientCert":     "For kube-apiserver X509 auth",
-	"clientKey":      "For kube-apiserver X509 auth",
-	"token":          "For kube-apiserver token auth",
-	"bootstrapToken": "For kubeadm init or join",
-	"certificateKey": "For kubeadm init or join",
-	"username":       "Username is the username for basic authentication to the kubernetes cluster.",
-	"as":             "Impersonate is the username to act-as.",
-	"as-groups":      "ImpersonateGroups is the groups to imperonate.",
-	"as-user-extra":  "ImpersonateUserExtra contains additional information for impersonated user.",
+	"":                  "ClusterCredential records the credential information needed to access the cluster.",
+	"etcdCACert":        "For TKE in global reuse",
+	"caCert":            "For connect the cluster",
+	"clientCert":        "For kube-apiserver X509 auth",
+	"clientKey":         "For kube-apiserver X509 auth",
+	"token":             "For kube-apiserver token auth",
+	"bootstrapToken":    "For kubeadm init or join",
+	"certificateKey":    "For kubeadm init or join",
+	"username":          "Username is the username for basic authentication to the kubernetes cluster.",
+	"as":                "Impersonate is the username to act-as.",
+	"as-groups":         "ImpersonateGroups is the groups to imperonate.",
+	"as-user-extra":     "ImpersonateUserExtra contains additional information for impersonated user.",
+	"serverCrt":         "For kube-apiserver server crt",
+	"serverKey":         "For kube-apiserver server key",
+	"serviceAccountKey": "For kube-apiserver issue ServiceAccount",
+	"kubeletPasswd":     "For kubelet token auth",
+	"kubeProxyPasswd":   "For kubeProxy token auth",
 }
 
 func (ClusterCredential) SwaggerDoc() map[string]string {
@@ -338,6 +343,8 @@ var map_ClusterSpec = map[string]string{
 	"hostnameAsNodename":   "If true will use hostname as nodename, if false will use machine IP as nodename.",
 	"bootstrapApps":        "BootstrapApps will install apps during creating cluster",
 	"appVersion":           "AppVersion is the overall version of system components",
+	"clusterLevel":         "ClusterLevel is the expect level of cluster",
+	"metaClusterRef":       "MetaClusterRef contains the meta cluster name of cluster",
 }
 
 func (ClusterSpec) SwaggerDoc() map[string]string {
@@ -351,6 +358,7 @@ var map_ClusterStatus = map[string]string{
 	"addresses":      "List of addresses reachable to the cluster.",
 	"appVersion":     "AppVersion is the overall version of system components",
 	"componentPhase": "ComponentPhase is the status of components, contains \"deployed\", \"pending-upgrade\", \"failed\" status",
+	"clusterLevel":   "ClusterLevel is the real level of cluster",
 }
 
 func (ClusterStatus) SwaggerDoc() map[string]string {
