@@ -234,9 +234,6 @@ type ClusterSpec struct {
 	// ClusterLevel is the expect level of cluster
 	// +optional
 	ClusterLevel *string `json:"clusterLevel,omitempty" protobuf:"bytes,28,opt,name=clusterLevel"`
-	// MetaClusterRef contains the meta cluster name of cluster
-	// +optional
-	MetaClusterRef *corev1.LocalObjectReference `json:"metaClusterRef,omitempty" protobuf:"bytes,29,opt,name=metaClusterRef"`
 }
 
 // ClusterStatus represents information about the status of a cluster.

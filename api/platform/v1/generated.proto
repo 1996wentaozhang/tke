@@ -674,10 +674,6 @@ message ClusterSpec {
   // ClusterLevel is the expect level of cluster
   // +optional
   optional string clusterLevel = 28;
-
-  // MetaClusterRef contains the meta cluster name of cluster
-  // +optional
-  optional k8s.io.api.core.v1.LocalObjectReference metaClusterRef = 29;
 }
 
 // ClusterStatus represents information about the status of a cluster.

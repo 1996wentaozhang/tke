@@ -344,7 +344,6 @@ var map_ClusterSpec = map[string]string{
 	"bootstrapApps":        "BootstrapApps will install apps during creating cluster",
 	"appVersion":           "AppVersion is the overall version of system components",
 	"clusterLevel":         "ClusterLevel is the expect level of cluster",
-	"metaClusterRef":       "MetaClusterRef contains the meta cluster name of cluster",
 }
 
 func (ClusterSpec) SwaggerDoc() map[string]string {

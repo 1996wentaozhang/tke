@@ -223,9 +223,6 @@ type ClusterSpec struct {
 	// ClusterLevel is the expect level of cluster
 	// +optional
 	ClusterLevel *string
-	// MetaClusterRef contains the meta cluster name of cluster
-	// +optional
-	MetaClusterRef *corev1.LocalObjectReference
 }
 
 // ClusterStatus represents information about the status of a cluster.
